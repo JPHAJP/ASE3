@@ -29,10 +29,10 @@ class XboxUR5eController:
         self.io = None
         
         # Parámetros de movimiento - VALORES REDUCIDOS para movimientos más suaves
-        self.joint_speed = 0.3  # Reducido de 0.5 a 0.3 rad/s
-        self.joint_accel = 0.5  # Reducido de 1.0 a 0.5 rad/s²
-        self.linear_speed = 0.05  # Reducido de 0.1 a 0.05 m/s
-        self.linear_accel = 0.15  # Reducido de 0.3 a 0.15 m/s²
+        self.joint_speed = 2.0  # Reducido de 0.5 a 0.3 rad/s
+        self.joint_accel = 3.0  # Reducido de 1.0 a 0.5 rad/s²
+        self.linear_speed = 0.5  # Reducido de 0.1 a 0.05 m/s
+        self.linear_accel = 1.5  # Reducido de 0.3 a 0.15 m/s²
         
         # NUEVO: Parámetros de blend radius para movimientos suaves
         self.joint_blend_radius = 0.02  # metros
@@ -56,8 +56,8 @@ class XboxUR5eController:
         self.emergency_stop_time = 0
         
         # Incrementos para movimientos - REDUCIDOS para mayor precisión
-        self.joint_increment = 0.02  # Reducido de 0.05 a 0.02 radianes por paso
-        self.linear_increment = 0.002  # Reducido de 0.005 a 0.002 metros por paso
+        self.joint_increment = 0.05  # Reducido de 0.05 a 0.02 radianes por paso
+        self.linear_increment = 0.008  # Reducido de 0.005 a 0.002 metros por paso
         
         # Tolerancia para detectar fin de movimiento - MEJORADA
         self.position_tolerance_joint = 0.005  # Más estricta para joints
