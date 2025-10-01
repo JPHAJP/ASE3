@@ -1,0 +1,549 @@
+2025-09-30 20:46:50,451 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 20:46:50,453 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 20:46:50,580 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 20:46:50,669 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado
+2025-09-30 20:46:50,670 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 20:46:50,670 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 20:46:50,671 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 20:46:50,686 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 20:46:50,687 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 20:46:50,701 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 20:46:50,701 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 20:46:50,705 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 20:46:50,705 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 20:46:58,001 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:46:58] "GET / HTTP/1.1" 200 -
+2025-09-30 20:46:59,036 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:46:59] "GET /socket.io/?EIO=4&transport=polling&t=PcTgdQY HTTP/1.1" 200 -
+2025-09-30 20:46:59,077 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 20:46:59,083 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:46:59] "POST /socket.io/?EIO=4&transport=polling&t=PcTgdZf&sid=b_7Ez843SXLV8vhaAAAA HTTP/1.1" 200 -
+2025-09-30 20:46:59,085 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:46:59] "GET /socket.io/?EIO=4&transport=polling&t=PcTgdZf.0&sid=b_7Ez843SXLV8vhaAAAA HTTP/1.1" 200 -
+2025-09-30 20:46:59,191 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:46:59] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-30 20:47:13,384 - __main__ - INFO - [ACTION] Moviendo robot a posición home
+2025-09-30 20:47:13,384 - robot_modules.ur5_controller - INFO - Simulando movimiento a home
+2025-09-30 20:47:16,385 - __main__ - INFO - [ACTION] Robot en posición home
+2025-09-30 20:47:16,386 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:47:16] "POST /api/robot/home HTTP/1.1" 200 -
+2025-09-30 20:47:45,017 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:47:45] "GET /api/positions HTTP/1.1" 200 -
+2025-09-30 20:47:48,478 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:47:48,866 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_204748.gif
+2025-09-30 20:47:48,867 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:47:52,130 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_204748.gif
+2025-09-30 20:47:52,130 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.3, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:47:54,131 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:47:54,135 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:47:54] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:47:54,238 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:47:54] "[33mGET /simulations/movement_20250930_204748.gif HTTP/1.1[0m" 404 -
+2025-09-30 20:48:26,685 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:48:43,861 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 20:48:43,863 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 20:48:43,986 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 20:48:44,029 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado
+2025-09-30 20:48:44,032 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 20:48:44,032 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 20:48:44,032 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 20:48:44,048 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 20:48:44,049 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 20:48:44,057 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 20:48:44,057 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 20:48:44,072 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 20:48:44,072 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 20:48:47,114 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:47] "GET / HTTP/1.1" 200 -
+2025-09-30 20:48:47,723 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:47] "GET /socket.io/?EIO=4&transport=polling&t=PcTh1-j HTTP/1.1" 200 -
+2025-09-30 20:48:47,764 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 20:48:47,765 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:47] "POST /socket.io/?EIO=4&transport=polling&t=PcTh267&sid=aQ7zkpID_KGKJuEcAAAA HTTP/1.1" 200 -
+2025-09-30 20:48:47,764 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:47] "GET /socket.io/?EIO=4&transport=polling&t=PcTh269&sid=aQ7zkpID_KGKJuEcAAAA HTTP/1.1" 200 -
+2025-09-30 20:48:47,793 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:47] "GET /socket.io/?EIO=4&transport=polling&t=PcTh26f&sid=aQ7zkpID_KGKJuEcAAAA HTTP/1.1" 200 -
+2025-09-30 20:48:50,894 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:48:51,216 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_204851.gif
+2025-09-30 20:48:51,216 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:48:54,505 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_204851.gif
+2025-09-30 20:48:54,506 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.3, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:48:56,506 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:48:56,508 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:56] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:48:56,536 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:48:56] "[33mGET /simulations/movement_20250930_204851.gif HTTP/1.1[0m" 404 -
+2025-09-30 20:52:49,384 - __main__ - INFO - 👋 Aplicación cerrada
+2025-09-30 20:56:52,181 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 20:56:52,181 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 20:56:52,255 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 20:56:52,293 - robot_modules.simulation_generator - INFO - Directorio de simulaciones: /home/jpha/Documents/ASE3/static/simulations
+2025-09-30 20:56:52,294 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado
+2025-09-30 20:56:52,295 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 20:56:52,295 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 20:56:52,295 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 20:56:52,302 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 20:56:52,302 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 20:56:52,302 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 20:56:52,302 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 20:56:52,305 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 20:56:52,305 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 20:56:53,606 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:53] "GET /socket.io/?EIO=4&transport=polling&t=PcTiujX HTTP/1.1" 200 -
+2025-09-30 20:56:53,617 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 20:56:53,618 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:53] "POST /socket.io/?EIO=4&transport=polling&t=PcTiujg&sid=NvXwgPmxkIxuXl7PAAAA HTTP/1.1" 200 -
+2025-09-30 20:56:53,620 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:53] "GET /socket.io/?EIO=4&transport=polling&t=PcTiujg.0&sid=NvXwgPmxkIxuXl7PAAAA HTTP/1.1" 200 -
+2025-09-30 20:56:53,648 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:53] "POST /socket.io/?EIO=4&transport=polling&t=PcTiuj_&sid=NvXwgPmxkIxuXl7PAAAA HTTP/1.1" 200 -
+2025-09-30 20:56:53,655 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:53] "GET /socket.io/?EIO=4&transport=polling&t=PcTiuk0&sid=NvXwgPmxkIxuXl7PAAAA HTTP/1.1" 200 -
+2025-09-30 20:56:56,891 - __main__ - INFO - [ACTION] Moviendo robot a posición home
+2025-09-30 20:56:56,891 - robot_modules.ur5_controller - INFO - Simulando movimiento a home
+2025-09-30 20:56:59,892 - __main__ - INFO - [ACTION] Robot en posición home
+2025-09-30 20:56:59,893 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:56:59] "POST /api/robot/home HTTP/1.1" 200 -
+2025-09-30 20:57:08,029 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:57:08,030 - robot_modules.simulation_generator - INFO - Generando simulación para movimiento a: [300.0, -200.0, 500.0, 0.0, 0.0, 0.0]
+2025-09-30 20:57:08,030 - robot_modules.simulation_generator - ERROR - Error generando simulación: module 'roboticstoolbox.models' has no attribute 'UR5e'
+2025-09-30 20:57:08,337 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:57:08,565 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.3, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:57:10,566 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:57:10,566 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:57:10] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:57:10,633 - __main__ - INFO - Sirviendo archivo de simulación: error_20250930_205708.gif
+2025-09-30 20:57:10,647 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:57:10] "GET /simulations/error_20250930_205708.gif HTTP/1.1" 200 -
+2025-09-30 20:57:29,269 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:57:29,269 - robot_modules.simulation_generator - INFO - Generando simulación para movimiento a: [300.0, -200.0, 500.0, 0.0, 0.0, 0.0]
+2025-09-30 20:57:29,269 - robot_modules.simulation_generator - ERROR - Error generando simulación: module 'roboticstoolbox.models' has no attribute 'UR5e'
+2025-09-30 20:57:29,531 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:57:29,731 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.3, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:57:31,732 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:57:31,733 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:57:31] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:57:31,781 - __main__ - INFO - Sirviendo archivo de simulación: error_20250930_205729.gif
+2025-09-30 20:57:31,784 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:57:31] "GET /simulations/error_20250930_205729.gif HTTP/1.1" 200 -
+2025-09-30 20:57:55,610 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:57:55,610 - robot_modules.simulation_generator - INFO - Generando simulación para movimiento a: [300.0, -200.0, 500.0, 0.0, 0.0, 0.0]
+2025-09-30 20:57:55,611 - robot_modules.simulation_generator - ERROR - Error generando simulación: module 'roboticstoolbox.models' has no attribute 'UR5e'
+2025-09-30 20:58:08,860 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 20:58:08,860 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 20:58:08,921 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 20:58:08,956 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado
+2025-09-30 20:58:08,956 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 20:58:08,956 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 20:58:08,956 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 20:58:08,962 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 20:58:08,962 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 20:58:08,962 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 20:58:08,962 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 20:58:08,965 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 20:58:08,965 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 20:58:10,347 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:10] "GET /socket.io/?EIO=4&transport=polling&t=PcTjBS9 HTTP/1.1" 200 -
+2025-09-30 20:58:10,411 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 20:58:10,412 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:10] "POST /socket.io/?EIO=4&transport=polling&t=PcTjBTA&sid=-kRfcH1hNXLvJNe0AAAA HTTP/1.1" 200 -
+2025-09-30 20:58:10,413 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:10] "GET /socket.io/?EIO=4&transport=polling&t=PcTjBTB&sid=-kRfcH1hNXLvJNe0AAAA HTTP/1.1" 200 -
+2025-09-30 20:58:15,963 - __main__ - INFO - [ACTION] Comando de movimiento: X=300.0, Y=-200.0, Z=500.0
+2025-09-30 20:58:16,284 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_205816.gif
+2025-09-30 20:58:16,284 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:58:19,505 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_205816.gif
+2025-09-30 20:58:19,505 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.3, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:58:21,506 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:58:21,507 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:21] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:58:21,531 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_205816.gif
+2025-09-30 20:58:21,615 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:21] "GET /simulations/movement_20250930_205816.gif HTTP/1.1" 200 -
+2025-09-30 20:58:30,907 - __main__ - INFO - [ACTION] Comando de movimiento: X=354.0, Y=-200.0, Z=500.0
+2025-09-30 20:58:31,181 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_205831.gif
+2025-09-30 20:58:31,182 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:58:34,274 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_205831.gif
+2025-09-30 20:58:34,274 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.354, -0.2, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 20:58:36,274 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:58:36,276 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:36] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:58:36,303 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_205831.gif
+2025-09-30 20:58:36,305 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:58:36] "GET /simulations/movement_20250930_205831.gif HTTP/1.1" 200 -
+2025-09-30 20:58:56,732 - __main__ - INFO - [ACTION] Comando de movimiento: X=354.0, Y=-100.0, Z=0.0
+2025-09-30 20:58:57,005 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_205857.gif
+2025-09-30 20:58:57,006 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:59:10,113 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 20:59:10,127 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 20:59:10,239 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 20:59:10,278 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado
+2025-09-30 20:59:10,279 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 20:59:10,280 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 20:59:10,281 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 20:59:10,289 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 20:59:10,289 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 20:59:10,289 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 20:59:10,290 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 20:59:10,292 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 20:59:10,292 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 20:59:12,031 - __main__ - INFO - [ACTION] Comando de movimiento: X=354.0, Y=-100.0, Z=0.0
+2025-09-30 20:59:12,301 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:12] "GET /socket.io/?EIO=4&transport=polling&t=PcTjQXD HTTP/1.1" 200 -
+2025-09-30 20:59:12,319 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 20:59:12,319 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:12] "POST /socket.io/?EIO=4&transport=polling&t=PcTjQap&sid=VysXgIolsRsopXoFAAAA HTTP/1.1" 200 -
+2025-09-30 20:59:12,321 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:12] "GET /socket.io/?EIO=4&transport=polling&t=PcTjQaq&sid=VysXgIolsRsopXoFAAAA HTTP/1.1" 200 -
+2025-09-30 20:59:12,344 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:12] "POST /socket.io/?EIO=4&transport=polling&t=PcTjQb9&sid=VysXgIolsRsopXoFAAAA HTTP/1.1" 200 -
+2025-09-30 20:59:12,346 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:12] "GET /socket.io/?EIO=4&transport=polling&t=PcTjQbD&sid=VysXgIolsRsopXoFAAAA HTTP/1.1" 200 -
+2025-09-30 20:59:12,388 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_205912.gif
+2025-09-30 20:59:12,389 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 20:59:15,699 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_205912.gif
+2025-09-30 20:59:15,699 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.354, -0.1, 0.0, 0.0, 0.0, 0.0]
+2025-09-30 20:59:17,699 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 20:59:17,702 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:17] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 20:59:17,745 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_205912.gif
+2025-09-30 20:59:17,757 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 20:59:17] "GET /simulations/movement_20250930_205912.gif HTTP/1.1" 200 -
+2025-09-30 20:59:30,461 - __main__ - INFO - [ACTION] Comando de movimiento: X=354.0, Y=-100.0, Z=500.0
+2025-09-30 20:59:30,766 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_205930.gif
+2025-09-30 20:59:30,768 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:01:33,850 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:01:33,851 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:01:33,959 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:01:33,997 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:01:33,997 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 21:01:33,997 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 21:01:33,997 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 21:01:34,002 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 21:01:34,002 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 21:01:34,002 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 21:01:34,002 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 21:01:34,005 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 21:01:34,005 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 21:01:36,342 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:36] "GET /socket.io/?EIO=4&transport=polling&t=PcTjzlG HTTP/1.1" 200 -
+2025-09-30 21:01:36,353 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 21:01:36,354 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:36] "POST /socket.io/?EIO=4&transport=polling&t=PcTjzlQ&sid=2t7wHgPGl_8ff54VAAAA HTTP/1.1" 200 -
+2025-09-30 21:01:36,355 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:36] "GET /socket.io/?EIO=4&transport=polling&t=PcTjzlR&sid=2t7wHgPGl_8ff54VAAAA HTTP/1.1" 200 -
+2025-09-30 21:01:36,379 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:36] "GET /socket.io/?EIO=4&transport=polling&t=PcTjzlo&sid=2t7wHgPGl_8ff54VAAAA HTTP/1.1" 200 -
+2025-09-30 21:01:36,382 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:36] "POST /socket.io/?EIO=4&transport=polling&t=PcTjzlq&sid=2t7wHgPGl_8ff54VAAAA HTTP/1.1" 200 -
+2025-09-30 21:01:37,853 - __main__ - INFO - [ACTION] Moviendo robot a posición home
+2025-09-30 21:01:37,853 - robot_modules.ur5_controller - INFO - Simulando movimiento a home
+2025-09-30 21:01:40,854 - __main__ - INFO - [ACTION] Robot en posición home
+2025-09-30 21:01:40,856 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:40] "POST /api/robot/home HTTP/1.1" 200 -
+2025-09-30 21:01:47,864 - __main__ - INFO - [ACTION] Comando de movimiento: X=354.0, Y=-100.0, Z=500.0
+2025-09-30 21:01:47,927 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_210147.gif
+2025-09-30 21:01:47,927 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:01:52,382 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_210147.gif
+2025-09-30 21:01:52,382 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.354, -0.1, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 21:01:54,382 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:01:54,383 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:54] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:01:54,399 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_210147.gif
+2025-09-30 21:01:54,407 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:01:54] "GET /simulations/movement_20250930_210147.gif HTTP/1.1" 200 -
+2025-09-30 21:02:16,113 - __main__ - INFO - [ACTION] Comando de movimiento: X=154.0, Y=-200.0, Z=400.0
+2025-09-30 21:02:16,152 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_210216.gif
+2025-09-30 21:02:16,152 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:02:20,604 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_210216.gif
+2025-09-30 21:02:20,604 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.154, -0.2, 0.4, 0.0, 0.0, 0.0]
+2025-09-30 21:02:22,605 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:02:22,606 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:02:22] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:02:22,626 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_210216.gif
+2025-09-30 21:02:22,628 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:02:22] "GET /simulations/movement_20250930_210216.gif HTTP/1.1" 200 -
+2025-09-30 21:02:48,334 - __main__ - INFO - [ACTION] Comando de movimiento: X=100.0, Y=-400.0, Z=500.0
+2025-09-30 21:02:48,358 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_210248.gif
+2025-09-30 21:02:48,358 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:02:52,736 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_210248.gif
+2025-09-30 21:02:52,736 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.1, -0.4, 0.5, 0.0, 0.0, 0.0]
+2025-09-30 21:02:54,736 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:02:54,736 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:02:54] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:02:54,753 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_210248.gif
+2025-09-30 21:02:54,753 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:02:54] "GET /simulations/movement_20250930_210248.gif HTTP/1.1" 200 -
+2025-09-30 21:03:16,888 - __main__ - INFO - [ACTION] Comando de movimiento: X=100.0, Y=-400.0, Z=-500.0
+2025-09-30 21:03:16,889 - robot_modules.simulation_generator - WARNING - Coordenadas fuera del workspace: [100.0, -400.0, -500.0, 0.0, 0.0, 0.0]
+2025-09-30 21:03:16,906 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_210316.gif
+2025-09-30 21:03:16,908 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:03:21,405 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_210316.gif
+2025-09-30 21:03:21,405 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.1, -0.4, -0.5, 0.0, 0.0, 0.0]
+2025-09-30 21:03:23,406 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:03:23,410 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:03:23] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:03:23,497 - __main__ - INFO - Sirviendo archivo de simulación: movement_20250930_210316.gif
+2025-09-30 21:03:23,498 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:03:23] "GET /simulations/movement_20250930_210316.gif HTTP/1.1" 200 -
+2025-09-30 21:04:04,212 - __main__ - INFO - [ACTION] Control gripper: Fuerza=5.0N, Posición=100.0%
+2025-09-30 21:04:04,213 - robot_modules.bluetooth_gripper - INFO - Conectando a ESP32 88:13:BF:70:40:72:1
+2025-09-30 21:04:05,744 - __main__ - INFO - [ACTION] Control gripper: Fuerza=5.0N, Posición=0.0%
+2025-09-30 21:04:05,744 - robot_modules.bluetooth_gripper - WARNING - No se pudo conectar para enviar comando del gripper
+2025-09-30 21:04:05,744 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:05] "POST /api/gripper/control HTTP/1.1" 200 -
+2025-09-30 21:04:09,445 - robot_modules.bluetooth_gripper - WARNING - Error conectando a gripper: [Errno 112] Host is down
+2025-09-30 21:04:09,446 - robot_modules.bluetooth_gripper - WARNING - No se pudo conectar para enviar comando del gripper
+2025-09-30 21:04:09,447 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:09] "POST /api/gripper/control HTTP/1.1" 200 -
+2025-09-30 21:04:15,368 - __main__ - INFO - [ACTION] Control gripper: Fuerza=5.0N, Posición=0.0%
+2025-09-30 21:04:15,368 - robot_modules.bluetooth_gripper - INFO - Conectando a ESP32 88:13:BF:70:40:72:1
+2025-09-30 21:04:20,599 - robot_modules.bluetooth_gripper - WARNING - Error conectando a gripper: [Errno 112] Host is down
+2025-09-30 21:04:20,602 - robot_modules.bluetooth_gripper - WARNING - No se pudo conectar para enviar comando del gripper
+2025-09-30 21:04:20,603 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:20] "POST /api/gripper/control HTTP/1.1" 200 -
+2025-09-30 21:04:24,724 - __main__ - INFO - [ACTION] Control gripper: Fuerza=0.7N, Posición=0.0%
+2025-09-30 21:04:24,725 - robot_modules.bluetooth_gripper - INFO - Conectando a ESP32 88:13:BF:70:40:72:1
+2025-09-30 21:04:28,138 - __main__ - INFO - [ACTION] Moviendo robot a posición home
+2025-09-30 21:04:28,138 - robot_modules.ur5_controller - INFO - Simulando movimiento a home
+2025-09-30 21:04:29,948 - robot_modules.bluetooth_gripper - WARNING - Error conectando a gripper: [Errno 112] Host is down
+2025-09-30 21:04:29,949 - robot_modules.bluetooth_gripper - WARNING - No se pudo conectar para enviar comando del gripper
+2025-09-30 21:04:29,951 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:29] "POST /api/gripper/control HTTP/1.1" 200 -
+2025-09-30 21:04:31,139 - __main__ - INFO - [ACTION] Robot en posición home
+2025-09-30 21:04:31,141 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:31] "POST /api/robot/home HTTP/1.1" 200 -
+2025-09-30 21:04:32,395 - __main__ - INFO - [ACTION] Iniciando Rutina de Calibración
+2025-09-30 21:04:32,395 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:32] "POST /api/routines/1 HTTP/1.1" 200 -
+2025-09-30 21:04:34,397 - __main__ - INFO - [ACTION] Rutina de Calibración completada
+2025-09-30 21:04:37,030 - __main__ - INFO - [ACTION] Iniciando Posición Inicial
+2025-09-30 21:04:37,032 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:37] "POST /api/routines/3 HTTP/1.1" 200 -
+2025-09-30 21:04:39,031 - __main__ - INFO - [ACTION] Posición Inicial completada
+2025-09-30 21:04:40,517 - __main__ - INFO - [ACTION] Iniciando Ciclo de Prueba
+2025-09-30 21:04:40,518 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:40] "POST /api/routines/2 HTTP/1.1" 200 -
+2025-09-30 21:04:42,519 - __main__ - INFO - [ACTION] Ciclo de Prueba completada
+2025-09-30 21:04:45,177 - __main__ - INFO - [ACTION] Iniciando Rutina de Seguridad
+2025-09-30 21:04:45,179 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:45] "POST /api/routines/4 HTTP/1.1" 200 -
+2025-09-30 21:04:47,179 - __main__ - INFO - [ACTION] Rutina de Seguridad completada
+2025-09-30 21:04:51,251 - __main__ - INFO - [INFO] Log del sistema limpiado
+2025-09-30 21:04:51,251 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:04:51] "POST /api/logs/clear HTTP/1.1" 200 -
+2025-09-30 21:07:44,625 - __main__ - INFO - 👋 Aplicación cerrada
+2025-09-30 21:16:25,470 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:16:25,471 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:16:25,632 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:16:25,694 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:16:25,695 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 21:16:25,695 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 21:16:25,695 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 21:16:25,706 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 21:16:25,706 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 21:16:25,706 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 21:16:25,707 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 21:16:25,710 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 21:16:25,710 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 21:16:29,291 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "GET /socket.io/?EIO=4&transport=polling&t=PcTnNlV HTTP/1.1" 200 -
+2025-09-30 21:16:29,338 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 21:16:29,339 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "POST /socket.io/?EIO=4&transport=polling&t=PcTnNlt&sid=EpINjrkUi9j-7Fx_AAAA HTTP/1.1" 200 -
+2025-09-30 21:16:29,347 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "GET /socket.io/?EIO=4&transport=polling&t=PcTnNlx&sid=EpINjrkUi9j-7Fx_AAAA HTTP/1.1" 200 -
+2025-09-30 21:16:29,398 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "POST /socket.io/?EIO=4&transport=polling&t=PcTnNmy&sid=EpINjrkUi9j-7Fx_AAAA HTTP/1.1" 200 -
+2025-09-30 21:16:29,399 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "GET /socket.io/?EIO=4&transport=polling&t=PcTnNn1&sid=EpINjrkUi9j-7Fx_AAAA HTTP/1.1" 200 -
+2025-09-30 21:16:29,951 - __main__ - INFO - [INFO] Cliente WebSocket desconectado
+2025-09-30 21:16:29,959 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:29] "GET /socket.io/?EIO=4&transport=websocket&sid=EpINjrkUi9j-7Fx_AAAA HTTP/1.1" 200 -
+2025-09-30 21:16:30,081 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "GET / HTTP/1.1" 200 -
+2025-09-30 21:16:30,714 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "GET /socket.io/?EIO=4&transport=polling&t=PcTnN-j HTTP/1.1" 200 -
+2025-09-30 21:16:30,727 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 21:16:30,727 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "POST /socket.io/?EIO=4&transport=polling&t=PcTnO5_&sid=L-KRj56BMbFx1XbAAAAC HTTP/1.1" 200 -
+2025-09-30 21:16:30,728 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "GET /socket.io/?EIO=4&transport=polling&t=PcTnO60&sid=L-KRj56BMbFx1XbAAAAC HTTP/1.1" 200 -
+2025-09-30 21:16:30,762 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "POST /socket.io/?EIO=4&transport=polling&t=PcTnO6a&sid=L-KRj56BMbFx1XbAAAAC HTTP/1.1" 200 -
+2025-09-30 21:16:30,776 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:30] "GET /socket.io/?EIO=4&transport=polling&t=PcTnO6c&sid=L-KRj56BMbFx1XbAAAAC HTTP/1.1" 200 -
+2025-09-30 21:16:33,162 - robot_modules.webcam_controller - INFO - Iniciando cámara 0...
+2025-09-30 21:16:34,484 - robot_modules.webcam_controller - INFO - ✅ Cámara iniciada exitosamente
+2025-09-30 21:16:34,485 - robot_modules.webcam_controller - INFO - Iniciando streaming de video...
+2025-09-30 21:16:34,486 - robot_modules.webcam_controller - INFO - ✅ Streaming iniciado
+2025-09-30 21:16:34,487 - __main__ - INFO - [INFO] Cámara web iniciada
+2025-09-30 21:16:34,488 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:34] "POST /api/webcam/start HTTP/1.1" 200 -
+2025-09-30 21:16:34,578 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:34] "GET /video_feed HTTP/1.1" 200 -
+2025-09-30 21:16:35,249 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:35] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:16:40,251 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:40] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:16:45,298 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:45] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:16:50,366 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:50] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:16:55,379 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:16:55] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:00,382 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:00] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:04,885 - __main__ - INFO - [ACTION] Comando de movimiento: X=100.0, Y=-400.0, Z=-500.0
+2025-09-30 21:17:04,886 - robot_modules.simulation_generator - WARNING - Coordenadas fuera del workspace: [100.0, -400.0, -500.0, 0.0, 0.0, 0.0]
+2025-09-30 21:17:04,947 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_211704.gif
+2025-09-30 21:17:04,949 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:17:05,378 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:05] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:09,338 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_211704.gif
+2025-09-30 21:17:09,338 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.1, -0.4, -0.5, 0.0, 0.0, 0.0]
+2025-09-30 21:17:10,381 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:10] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:11,339 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:17:11,339 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:11] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:17:11,362 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:11] "GET /static/simulations/movement_20250930_211704.gif HTTP/1.1" 200 -
+2025-09-30 21:17:15,424 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:15] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:20,472 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:20] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:22,503 - __main__ - INFO - [ACTION] Comando de movimiento: X=0.0, Y=0.0, Z=0.0
+2025-09-30 21:17:22,541 - robot_modules.simulation_generator - WARNING - No se encontró solución de cinemática inversa
+2025-09-30 21:17:22,542 - robot_modules.simulation_generator - ERROR - ❌ Error generando GIF: No se encontró solución de cinemática inversa
+2025-09-30 21:17:22,563 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:17:22,863 - robot_modules.ur5_controller - WARNING - Punto fuera del alcance: 0.000m
+2025-09-30 21:17:22,863 - __main__ - INFO - [ERROR] Error en movimiento del robot
+2025-09-30 21:17:22,864 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:22] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:17:25,492 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:25] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:30,506 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:30] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:35,556 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:35] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:40,631 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:17:40] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:17:40,765 - __main__ - INFO - 👋 Aplicación cerrada
+2025-09-30 21:21:10,699 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:21:10,699 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:21:10,754 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:21:10,795 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:10,796 - __main__ - ERROR - ❌ Error inicializando controladores: 'RobotWebApp' object has no attribute 'state_lock'
+2025-09-30 21:21:10,825 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:11,070 - robot_modules.webcam_controller - INFO - La cámara ya está inactiva
+2025-09-30 21:21:24,989 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:21:24,989 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:21:25,044 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:21:25,075 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:25,075 - __main__ - ERROR - ❌ Error inicializando controladores: 'RobotWebApp' object has no attribute 'state_lock'
+2025-09-30 21:21:25,102 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:25,352 - robot_modules.webcam_controller - INFO - La cámara ya está inactiva
+2025-09-30 21:21:56,659 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:21:56,660 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:21:56,757 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:21:56,793 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:56,793 - __main__ - ERROR - ❌ Error inicializando controladores: 'RobotWebApp' object has no attribute 'state_lock'
+2025-09-30 21:21:56,819 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:21:57,064 - robot_modules.webcam_controller - INFO - La cámara ya está inactiva
+2025-09-30 21:22:27,338 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:22:27,339 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:22:27,392 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:22:27,427 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:22:27,427 - __main__ - ERROR - ❌ Error inicializando controladores: 'RobotWebApp' object has no attribute 'state_lock'
+2025-09-30 21:22:27,455 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:22:27,713 - robot_modules.webcam_controller - INFO - La cámara ya está inactiva
+2025-09-30 21:22:54,727 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:22:54,728 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:22:54,788 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:22:54,820 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:22:54,820 - __main__ - ERROR - ❌ Error inicializando controladores: 'RobotWebApp' object has no attribute 'state_lock'
+2025-09-30 21:22:54,848 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:22:55,115 - robot_modules.webcam_controller - INFO - La cámara ya está inactiva
+2025-09-30 21:24:35,878 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:24:35,878 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:24:35,930 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:24:35,964 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:24:35,965 - __main__ - INFO - [INFO] 🎬 Sistema de simulación iniciado
+2025-09-30 21:24:35,965 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 21:24:35,965 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 21:24:35,965 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 21:24:35,975 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 21:24:35,976 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 21:24:35,977 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 21:24:35,977 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 21:24:35,979 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 21:24:35,981 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 21:24:38,790 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:38] "GET / HTTP/1.1" 200 -
+2025-09-30 21:24:39,383 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:39] "GET /socket.io/?EIO=4&transport=polling&t=PcTpFJL HTTP/1.1" 200 -
+2025-09-30 21:24:39,401 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 21:24:39,401 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:39] "POST /socket.io/?EIO=4&transport=polling&t=PcTpFPT&sid=iimupCYp4VzsEfvhAAAA HTTP/1.1" 200 -
+2025-09-30 21:24:39,405 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:39] "GET /socket.io/?EIO=4&transport=polling&t=PcTpFPU&sid=iimupCYp4VzsEfvhAAAA HTTP/1.1" 200 -
+2025-09-30 21:24:39,452 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:39] "GET /socket.io/?EIO=4&transport=polling&t=PcTpFQF&sid=iimupCYp4VzsEfvhAAAA HTTP/1.1" 200 -
+2025-09-30 21:24:39,453 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:39] "POST /socket.io/?EIO=4&transport=polling&t=PcTpFQE&sid=iimupCYp4VzsEfvhAAAA HTTP/1.1" 200 -
+2025-09-30 21:24:43,139 - robot_modules.webcam_controller - INFO - Iniciando cámara 0...
+2025-09-30 21:24:44,013 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:44] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:24:44,365 - robot_modules.webcam_controller - INFO - ✅ Cámara iniciada exitosamente
+2025-09-30 21:24:44,366 - robot_modules.webcam_controller - INFO - Iniciando streaming de video...
+2025-09-30 21:24:44,368 - robot_modules.webcam_controller - INFO - ✅ Streaming iniciado
+2025-09-30 21:24:44,369 - __main__ - INFO - [INFO] Cámara web iniciada
+2025-09-30 21:24:44,370 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:44] "POST /api/webcam/start HTTP/1.1" 200 -
+2025-09-30 21:24:44,416 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:44] "GET /video_feed HTTP/1.1" 200 -
+2025-09-30 21:24:45,999 - robot_modules.webcam_controller - INFO - Deteniendo cámara...
+2025-09-30 21:24:46,000 - robot_modules.webcam_controller - INFO - Deteniendo streaming...
+2025-09-30 21:24:46,023 - robot_modules.webcam_controller - INFO - Loop de captura terminado
+2025-09-30 21:24:46,024 - robot_modules.webcam_controller - INFO - ✅ Streaming detenido
+2025-09-30 21:24:46,025 - robot_modules.webcam_controller - INFO - ✅ Cámara detenida
+2025-09-30 21:24:46,026 - __main__ - INFO - [INFO] Cámara web detenida
+2025-09-30 21:24:46,026 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:46] "POST /api/webcam/stop HTTP/1.1" 200 -
+2025-09-30 21:24:49,021 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:49] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:24:54,055 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:54] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:24:59,148 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:24:59] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:04,072 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:04] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:09,203 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:09] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:14,289 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:14] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:19,320 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:19] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:23,466 - robot_modules.webcam_controller - INFO - Iniciando cámara 0...
+2025-09-30 21:25:24,264 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:24] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:24,687 - robot_modules.webcam_controller - INFO - ✅ Cámara iniciada exitosamente
+2025-09-30 21:25:24,689 - robot_modules.webcam_controller - INFO - Iniciando streaming de video...
+2025-09-30 21:25:24,692 - robot_modules.webcam_controller - INFO - ✅ Streaming iniciado
+2025-09-30 21:25:24,694 - __main__ - INFO - [INFO] Cámara web iniciada
+2025-09-30 21:25:24,696 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:24] "POST /api/webcam/start HTTP/1.1" 200 -
+2025-09-30 21:25:29,283 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:29] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:33,717 - robot_modules.webcam_controller - INFO - Deteniendo cámara...
+2025-09-30 21:25:33,718 - robot_modules.webcam_controller - INFO - Deteniendo streaming...
+2025-09-30 21:25:33,724 - robot_modules.webcam_controller - INFO - Loop de captura terminado
+2025-09-30 21:25:33,725 - robot_modules.webcam_controller - INFO - ✅ Streaming detenido
+2025-09-30 21:25:33,726 - robot_modules.webcam_controller - INFO - ✅ Cámara detenida
+2025-09-30 21:25:33,727 - __main__ - INFO - [INFO] Cámara web detenida
+2025-09-30 21:25:33,727 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:33] "POST /api/webcam/stop HTTP/1.1" 200 -
+2025-09-30 21:25:34,265 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:34] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:39,327 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:39] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:44,424 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:44] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:49,411 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:49] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:54,407 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:54] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:25:59,450 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:25:59] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:04,485 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:04] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:09,568 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:09] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:12,763 - __main__ - INFO - 👋 Aplicación cerrada
+2025-09-30 21:26:19,799 - robot_modules.ur5_controller - ERROR - ❌ Error conectando al robot: Error: Could not connect to: 192.168.1.1 at 30004, verify the IP
+2025-09-30 21:26:19,799 - robot_modules.ur5_controller - INFO - UR5WebController inicializado - IP: 192.168.1.1
+2025-09-30 21:26:19,852 - robot_modules.xbox_controller_web - INFO - XboxControllerWeb inicializado
+2025-09-30 21:26:19,884 - robot_modules.simulation_generator - INFO - SimulationGenerator inicializado con backend thread-safe
+2025-09-30 21:26:19,884 - __main__ - INFO - [INFO] 🎬 Sistema de simulación iniciado
+2025-09-30 21:26:19,885 - robot_modules.bluetooth_gripper - INFO - BluetoothGripperController inicializado - MAC: 88:13:BF:70:40:72
+2025-09-30 21:26:19,885 - __main__ - INFO - ✅ Controladores inicializados correctamente
+2025-09-30 21:26:19,885 - __main__ - INFO - 🚀 RobotWebApp inicializada
+2025-09-30 21:26:19,890 - __main__ - INFO - [INFO] Sistema iniciado correctamente
+2025-09-30 21:26:19,890 - __main__ - INFO - [INFO] Servidor web Flask iniciado
+2025-09-30 21:26:19,891 - __main__ - INFO - [INFO] Monitor del robot iniciado
+2025-09-30 21:26:19,891 - __main__ - INFO - 🚀 Iniciando servidor Flask en http://localhost:5000
+2025-09-30 21:26:19,894 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.68.108:5000
+2025-09-30 21:26:19,894 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-30 21:26:20,702 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:20] "GET / HTTP/1.1" 200 -
+2025-09-30 21:26:21,231 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:21] "GET /socket.io/?EIO=4&transport=polling&t=PcTpeCm HTTP/1.1" 200 -
+2025-09-30 21:26:21,238 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:21] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-30 21:26:21,258 - __main__ - INFO - [INFO] Cliente WebSocket conectado
+2025-09-30 21:26:21,259 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:21] "GET /socket.io/?EIO=4&transport=polling&t=PcTpeH5&sid=4YzQEqsoqrDeNgfbAAAA HTTP/1.1" 200 -
+2025-09-30 21:26:21,263 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:21] "POST /socket.io/?EIO=4&transport=polling&t=PcTpeH4&sid=4YzQEqsoqrDeNgfbAAAA HTTP/1.1" 200 -
+2025-09-30 21:26:23,490 - robot_modules.webcam_controller - INFO - Iniciando cámara 0...
+2025-09-30 21:26:24,706 - robot_modules.webcam_controller - INFO - ✅ Cámara iniciada exitosamente
+2025-09-30 21:26:24,706 - robot_modules.webcam_controller - INFO - Iniciando streaming de video...
+2025-09-30 21:26:24,707 - robot_modules.webcam_controller - INFO - ✅ Streaming iniciado
+2025-09-30 21:26:24,707 - __main__ - INFO - [INFO] Cámara web iniciada
+2025-09-30 21:26:24,708 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:24] "POST /api/webcam/start HTTP/1.1" 200 -
+2025-09-30 21:26:24,831 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:24] "GET /video_feed HTTP/1.1" 200 -
+2025-09-30 21:26:26,020 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:26] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:31,101 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:31] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:36,092 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:36] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:36,892 - __main__ - INFO - [ACTION] Comando de movimiento: X=11.0, Y=10.0, Z=0.0
+2025-09-30 21:26:36,902 - robot_modules.simulation_generator - WARNING - No se encontró solución de cinemática inversa
+2025-09-30 21:26:36,903 - __main__ - INFO - [WARNING] ⚠️ No se encontró solución de cinemática inversa
+2025-09-30 21:26:36,903 - robot_modules.simulation_generator - ERROR - ❌ Error generando GIF: No se encontró solución de cinemática inversa
+2025-09-30 21:26:36,903 - __main__ - INFO - [ERROR] ❌ Error generando GIF: No se encontró solución de cinemática inversa
+2025-09-30 21:26:36,921 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:26:37,219 - robot_modules.ur5_controller - WARNING - Punto fuera del alcance: 10.000m
+2025-09-30 21:26:37,219 - __main__ - INFO - [ERROR] Error en movimiento del robot
+2025-09-30 21:26:37,220 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:37] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:26:41,162 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:41] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:46,158 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:46] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:51,167 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:51] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:52,927 - __main__ - INFO - [ACTION] Comando de movimiento: X=100.0, Y=-200.0, Z=200.0
+2025-09-30 21:26:52,976 - robot_modules.simulation_generator - INFO - Generando GIF: static/simulations/movement_20250930_212652.gif
+2025-09-30 21:26:52,976 - matplotlib.animation - INFO - Animation.save using <class 'matplotlib.animation.PillowWriter'>
+2025-09-30 21:26:56,184 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:56] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:26:57,276 - robot_modules.simulation_generator - INFO - ✅ GIF generado exitosamente: movement_20250930_212652.gif
+2025-09-30 21:26:57,276 - robot_modules.ur5_controller - INFO - Simulando movimiento a [0.1, -0.2, 0.2, 0.0, 0.0, 0.0]
+2025-09-30 21:26:59,280 - __main__ - INFO - [ACTION] Movimiento completado exitosamente
+2025-09-30 21:26:59,280 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:59] "POST /api/robot/move HTTP/1.1" 200 -
+2025-09-30 21:26:59,305 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:26:59] "GET /static/simulations/movement_20250930_212652.gif HTTP/1.1" 200 -
+2025-09-30 21:27:01,240 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:01] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:06,236 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:06] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:11,235 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:11] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:16,238 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:16] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:21,251 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:21] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:26,305 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:26] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:31,420 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:31] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:36,430 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:36] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:36,519 - __main__ - INFO - [ACTION] Control gripper: Fuerza=4.2N, Posición=31.0%
+2025-09-30 21:27:36,519 - robot_modules.bluetooth_gripper - INFO - Conectando a ESP32 88:13:BF:70:40:72:1
+2025-09-30 21:27:41,535 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:41] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:41,759 - robot_modules.bluetooth_gripper - WARNING - Error conectando a gripper: [Errno 112] Host is down
+2025-09-30 21:27:41,759 - robot_modules.bluetooth_gripper - WARNING - No se pudo conectar para enviar comando del gripper
+2025-09-30 21:27:41,759 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:41] "POST /api/gripper/control HTTP/1.1" 200 -
+2025-09-30 21:27:46,658 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:46] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:50,829 - __main__ - INFO - [ACTION] Modo de control cambiado a: xbox
+2025-09-30 21:27:50,830 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:50] "POST /api/control-mode HTTP/1.1" 200 -
+2025-09-30 21:27:51,656 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:51] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:27:55,072 - __main__ - INFO - [ACTION] Modo de control cambiado a: coordinates
+2025-09-30 21:27:55,072 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:55] "POST /api/control-mode HTTP/1.1" 200 -
+2025-09-30 21:27:55,775 - __main__ - INFO - [ACTION] Modo de control cambiado a: xbox
+2025-09-30 21:27:55,776 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:55] "POST /api/control-mode HTTP/1.1" 200 -
+2025-09-30 21:27:56,661 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:27:56] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:28:01,667 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:01] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:28:06,703 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:06] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:28:08,853 - __main__ - INFO - [ACTION] Modo de control cambiado a: coordinates
+2025-09-30 21:28:08,854 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:08] "POST /api/control-mode HTTP/1.1" 200 -
+2025-09-30 21:28:11,356 - __main__ - INFO - [INFO] Log del sistema limpiado
+2025-09-30 21:28:11,357 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:11] "POST /api/logs/clear HTTP/1.1" 200 -
+2025-09-30 21:28:11,705 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:11] "GET /api/webcam/status HTTP/1.1" 200 -
+2025-09-30 21:28:16,763 - werkzeug - INFO - 192.168.68.108 - - [30/Sep/2025 21:28:16] "GET /api/webcam/status HTTP/1.1" 200 -
