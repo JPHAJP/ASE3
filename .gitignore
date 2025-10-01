@@ -1,1 +1,6 @@
 /venv
+*.log
+__pycache__/
+*.pyc
+
+robot_app.log
