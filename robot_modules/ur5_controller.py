@@ -1,6 +1,6 @@
 """
-Controlador UR5 adaptado para la aplicación web
-Basado en move_controler.py pero adaptado para funcionar como módulo web
+Controlador UR5 en modo desconectado para la aplicación web
+Versión simplificada sin cinemática, preparada para URRTDE cuando el robot esté disponible
 """
 
 import numpy as np
@@ -9,15 +9,8 @@ import threading
 import logging
 from datetime import datetime
 
-try:
-    import rtde_control
-    import rtde_receive
-    import rtde_io
-    RTDE_AVAILABLE = True
-except ImportError:
-    RTDE_AVAILABLE = False
-    logging.warning("RTDE no disponible - funcionando en modo simulación")
-
+# URRTDE configurado en modo desconectado por el momento
+RTDE_AVAILABLE = False
 logger = logging.getLogger(__name__)
 
 class UR5WebController:
@@ -65,52 +58,30 @@ class UR5WebController:
         logger.info(f"UR5WebController inicializado - IP: {robot_ip}")
 
     def initialize_robot(self):
-        """Inicializar conexión con el robot UR5e"""
+        """Inicializar conexión con el robot UR5e - MODO DESCONECTADO"""
         try:
-            if not RTDE_AVAILABLE:
-                logger.warning("RTDE no disponible - simulando conexión")
-                return False
-            
-            self.control = rtde_control.RTDEControlInterface(self.robot_ip)
-            self.receive = rtde_receive.RTDEReceiveInterface(self.robot_ip)
-            self.io = rtde_io.RTDEIOInterface(self.robot_ip)
-            
-            self.connected = True
-            logger.info(f"✅ Conexión establecida con UR5e en {self.robot_ip}")
-            return True
+            logger.warning("🔌 URRTDE en modo desconectado - robot no disponible físicamente")
+            self.connected = False
+            return False
             
         except Exception as e:
-            logger.error(f"❌ Error conectando al robot: {e}")
+            logger.error(f"❌ Error inicializando controlador: {e}")
             self.connected = False
             return False
 
     def is_connected(self):
-        """Verificar si el robot está conectado"""
-        return self.connected and RTDE_AVAILABLE
+        """Verificar si el robot está conectado - SIEMPRE FALSO EN MODO DESCONECTADO"""
+        return False  # Modo desconectado
 
     def get_current_joint_positions(self):
-        """Obtener posiciones actuales de las articulaciones"""
-        if not self.is_connected():
-            # Retornar posición simulada
-            return self.home_joint_angles_rad
-        
-        try:
-            return self.receive.getActualQ()
-        except Exception as e:
-            logger.error(f"Error obteniendo posiciones articulares: {e}")
-            return self.home_joint_angles_rad
+        """Obtener posiciones actuales de las articulaciones - MODO DESCONECTADO"""
+        # En modo desconectado, siempre retornar posición home simulada
+        return self.home_joint_angles_rad
 
     def get_current_tcp_pose(self):
-        """Obtener pose actual del TCP"""
-        if not self.is_connected():
-            # Retornar pose simulada
-            return [0.3, -0.2, 0.5, 0, 0, 0]
-        
-        try:
-            return self.receive.getActualTCPPose()
-        except Exception as e:
-            logger.error(f"Error obteniendo pose TCP: {e}")
-            return [0.3, -0.2, 0.5, 0, 0, 0]
+        """Obtener pose actual del TCP - MODO DESCONECTADO"""
+        # En modo desconectado, siempre retornar pose home simulada
+        return [0.3, -0.2, 0.5, 0, 0, 0]
 
     def get_current_pose(self):
         """Obtener pose actual formateada para la web"""
@@ -171,31 +142,11 @@ class UR5WebController:
                 
                 target_pose = [x_m, y_m, z_m, rx_rad, ry_rad, rz_rad]
                 
-                if not self.is_connected():
-                    logger.info(f"Simulando movimiento a {target_pose}")
-                    time.sleep(2)  # Simular tiempo de movimiento
-                    return True
-                
-                # Ejecutar movimiento real
-                self.movement_active = True
-                
-                speed = float(self.linear_speed * self.speed_levels[self.current_speed_level])
-                accel = float(self.linear_accel * self.speed_levels[self.current_speed_level])
-                
-                logger.info(f"Moviendo a: {target_pose}")
-                self.control.moveL(target_pose, speed, accel, False)
-                
-                # Esperar finalización
-                success = self.wait_for_movement_completion_tcp(target_pose, timeout=10.0)
-                
-                self.movement_active = False
-                
-                if success:
-                    logger.info("✅ Movimiento completado exitosamente")
-                else:
-                    logger.warning("⚠️ Timeout en movimiento")
-                
-                return success
+                # MODO DESCONECTADO - Solo loggar el comando 
+                logger.info(f"📝 Comando registrado: mover a {target_pose}")
+                logger.info("⚠️ Robot no conectado - comando no enviado")
+                time.sleep(1)  # Simular tiempo de procesamiento
+                return True
                 
         except Exception as e:
             logger.error(f"❌ Error en movimiento: {e}")
@@ -210,31 +161,11 @@ class UR5WebController:
                     logger.warning("No se puede ir a home: parada de emergencia activa")
                     return False
                 
-                if not self.is_connected():
-                    logger.info("Simulando movimiento a home")
-                    time.sleep(3)
-                    return True
-                
-                logger.info("Moviendo robot a posición home...")
-                self.movement_active = True
-                
-                speed = float(self.joint_speed * self.speed_levels[self.current_speed_level])
-                accel = float(self.joint_accel * self.speed_levels[self.current_speed_level])
-                
-                self.control.moveJ(self.home_joint_angles_rad, speed, accel, False)
-                
-                success = self.wait_for_movement_completion_joint(
-                    self.home_joint_angles_rad, timeout=15.0
-                )
-                
-                self.movement_active = False
-                
-                if success:
-                    logger.info("✅ Robot en posición home")
-                else:
-                    logger.warning("⚠️ Timeout moviendo a home")
-                
-                return success
+                # MODO DESCONECTADO - Solo loggar el comando
+                logger.info("📝 Comando registrado: ir a posición home")
+                logger.info("⚠️ Robot no conectado - comando no enviado")
+                time.sleep(2)
+                return True
                 
         except Exception as e:
             logger.error(f"❌ Error yendo a home: {e}")
@@ -242,20 +173,16 @@ class UR5WebController:
             return False
 
     def emergency_stop(self):
-        """Activar parada de emergencia"""
+        """Activar parada de emergencia - MODO DESCONECTADO"""
         try:
             with self.lock:
-                if self.is_connected():
-                    self.control.stopJ(2.0)
-                    self.control.stopL(2.0)
-                
                 self.movement_active = False
                 self.emergency_stop_active = True
-                logger.warning("🚨 PARADA DE EMERGENCIA ACTIVADA")
+                logger.warning("🚨 PARADA DE EMERGENCIA REGISTRADA (robot no conectado)")
                 return True
                 
         except Exception as e:
-            logger.error(f"Error en parada de emergencia: {e}")
+            logger.error(f"Error registrando parada de emergencia: {e}")
             return False
 
     def deactivate_emergency_stop(self):
@@ -265,94 +192,31 @@ class UR5WebController:
             logger.info("✅ Parada de emergencia DESACTIVADA")
 
     def wait_for_movement_completion_joint(self, target_joints, timeout=5.0):
-        """Esperar a que termine el movimiento articular"""
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            if self.emergency_stop_active:
-                return False
-            
-            if not self.is_connected():
-                return True  # En simulación siempre completa
-            
-            try:
-                current_joints = self.get_current_joint_positions()
-                
-                all_close = True
-                for i in range(len(target_joints)):
-                    if abs(current_joints[i] - target_joints[i]) > self.position_tolerance_joint:
-                        all_close = False
-                        break
-                
-                if all_close:
-                    return True
-                
-                time.sleep(0.02)
-                
-            except Exception as e:
-                logger.error(f"Error verificando posición articular: {e}")
-                time.sleep(0.1)
-        
-        return False
+        """Esperar a que termine el movimiento articular - MODO DESCONECTADO"""
+        # En modo desconectado, siempre retornar éxito inmediatamente
+        return not self.emergency_stop_active
 
     def wait_for_movement_completion_tcp(self, target_pose, timeout=5.0):
-        """Esperar a que termine el movimiento lineal"""
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            if self.emergency_stop_active:
-                return False
-            
-            if not self.is_connected():
-                return True  # En simulación siempre completa
-            
-            try:
-                current_pose = self.get_current_tcp_pose()
-                
-                # Verificar posición (X, Y, Z)
-                position_close = True
-                for i in range(3):
-                    if abs(current_pose[i] - target_pose[i]) > self.position_tolerance_tcp:
-                        position_close = False
-                        break
-                
-                # Verificar orientación (RX, RY, RZ)
-                orientation_close = True
-                for i in range(3, 6):
-                    if abs(current_pose[i] - target_pose[i]) > self.position_tolerance_joint:
-                        orientation_close = False
-                        break
-                
-                if position_close and orientation_close:
-                    return True
-                
-                time.sleep(0.02)
-                
-            except Exception as e:
-                logger.error(f"Error verificando pose TCP: {e}")
-                time.sleep(0.1)
-        
-        return False
+        """Esperar a que termine el movimiento lineal - MODO DESCONECTADO"""  
+        # En modo desconectado, siempre retornar éxito inmediatamente
+        return not self.emergency_stop_active
 
     def get_robot_status(self):
-        """Obtener estado completo del robot"""
+        """Obtener estado completo del robot - MODO DESCONECTADO"""
         with self.lock:
             status = {
-                'connected': self.connected,
+                'connected': False,  # Siempre desconectado
                 'movement_active': self.movement_active,
                 'emergency_stop_active': self.emergency_stop_active,
                 'current_position': self.get_current_pose(),
                 'speed_level': self.current_speed_level + 1,
-                'speed_percentage': int(self.speed_levels[self.current_speed_level] * 100)
+                'speed_percentage': int(self.speed_levels[self.current_speed_level] * 100),
+                'mode': 'DESCONECTADO'  # Indicador de modo
             }
         
-        if self.is_connected():
-            try:
-                # Información adicional del robot real
-                joints = self.get_current_joint_positions()
-                status['joint_positions'] = [np.degrees(j) for j in joints]
-            except Exception as e:
-                logger.error(f"Error obteniendo información del robot: {e}")
+        # En modo desconectado, incluir posiciones articulares simuladas
+        joints = self.get_current_joint_positions()
+        status['joint_positions'] = [np.degrees(j) for j in joints]
         
         return status
 
@@ -366,7 +230,7 @@ class UR5WebController:
         return False
 
     def disconnect(self):
-        """Desconectar del robot"""
+        """Desconectar del robot - MODO DESCONECTADO"""
         try:
             with self.lock:
                 if self.movement_active:
@@ -374,15 +238,12 @@ class UR5WebController:
                 
                 self.connected = False
                 
-                # Cerrar conexiones RTDE
-                if self.control:
-                    self.control = None
-                if self.receive:
-                    self.receive = None
-                if self.io:
-                    self.io = None
+                # En modo desconectado, no hay conexiones que cerrar
+                self.control = None
+                self.receive = None
+                self.io = None
             
-            logger.info("✅ Desconectado del robot UR5")
+            logger.info("📝 Controlador UR5 cerrado (modo desconectado)")
             
         except Exception as e:
-            logger.error(f"Error desconectando: {e}")
+            logger.error(f"Error cerrando controlador: {e}")

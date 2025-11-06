@@ -115,12 +115,6 @@
             overflow: hidden;
         }
 
-        .simulation-gif {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
         .webcam-container {
             background: #000;
             border-radius: 8px;
@@ -343,36 +337,219 @@
                             </div>
                         </div>
 
-                        <!-- Control de Pinzas -->
+                        <!-- Control de Gripper uSENSE -->
                         <div class="mb-4">
-                            <h6 class="text-primary">Control de Gripper Bluetooth</h6>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="form-label">Fuerza (N)</label>
-                                    <input type="range" class="form-range" id="gripperForce" min="0" max="10" value="5" step="0.1">
-                                    <span id="forceValue">5.0</span> N
+                            <h6 class="text-primary">Control de Gripper uSENSEGRIP</h6>
+                            
+                            <!-- Control Básico -->
+                            <div class="card mt-2">
+                                <div class="card-header py-2">
+                                    <small><i class="bi bi-sliders"></i> Control Básico</small>
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label">Posición (%)</label>
-                                    <input type="range" class="form-range" id="gripperPosition" min="0" max="100" value="0">
-                                    <span id="positionValue">0</span> %
+                                <div class="card-body p-2">
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label small">Fuerza (N)</label>
+                                            <input type="range" class="form-range" id="gripperForce" min="0" max="50" value="5" step="0.1">
+                                            <span id="forceValue">5.0</span> N
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small">Distancia (mm)</label>
+                                            <input type="range" class="form-range" id="gripperDistance" min="0" max="100" value="0" step="0.1">
+                                            <span id="distanceValue">0.0</span> mm
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mt-2">
+                                        <div class="col-3">
+                                            <button class="btn btn-success btn-sm w-100" onclick="openGripper()">
+                                                <i class="bi bi-arrows-expand"></i> Abrir
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-warning btn-sm w-100" onclick="closeGripper()">
+                                                <i class="bi bi-arrows-collapse"></i> Cerrar
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-info btn-sm w-100" onclick="homeGripper()">
+                                                <i class="bi bi-house"></i> Home
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-primary btn-sm w-100" onclick="sendGripperBasic()">
+                                                <i class="bi bi-send"></i> Enviar
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="row g-2 mt-2">
-                                <div class="col-4">
-                                    <button class="btn btn-success w-100" onclick="openGripper()">
-                                        <i class="bi bi-arrows-expand"></i> Abrir
-                                    </button>
+
+                            <!-- Comandos Específicos -->
+                            <div class="card mt-2">
+                                <div class="card-header py-2">
+                                    <small><i class="bi bi-terminal"></i> Comandos uSENSEGRIP</small>
                                 </div>
-                                <div class="col-4">
-                                    <button class="btn btn-warning w-100" onclick="closeGripper()">
-                                        <i class="bi bi-arrows-collapse"></i> Cerrar
-                                    </button>
+                                <div class="card-body p-2">
+                                    <!-- Grupo HELP & CONFIG -->
+                                    <div class="row g-1 mb-2">
+                                        <div class="col-2">
+                                            <button class="btn btn-info btn-sm w-100" onclick="sendGripperCmd('HELP')" title="Mostrar ayuda">
+                                                HELP
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG STALL STINFO')" title="Toggle StallGuard telemetry">
+                                                STALL INFO
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG HOMING ONBOOT')" title="Toggle homing on boot">
+                                                AUTO HOME
+                                            </button>
+                                        </div>
+                                        <div class="col-4">
+                                            <select class="form-select form-select-sm" id="motorModeSelect" onchange="setMotorMode()">
+                                                <option value="">Modo Motor</option>
+                                                <option value="0">Normal</option>
+                                                <option value="1">High Speed</option>
+                                                <option value="2">Precision</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Grupo MOVE -->
+                                    <div class="row g-1 mb-2">
+                                        <div class="col-3">
+                                            <button class="btn btn-success btn-sm w-100" onclick="sendGripperCmd('MOVE GRIP HOME')" title="Ejecutar homing completo">
+                                                HOME
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control form-control-sm" id="stepInput" placeholder="Steps" min="-10000" max="10000" value="100">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="moveSteps()" title="Mover pasos relativos">
+                                                    STEPS
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control form-control-sm" id="distInput" placeholder="mm" min="0" max="100" value="10" step="0.1">
+                                                <button class="btn btn-outline-success btn-sm" onclick="moveDist()" title="Mover a distancia absoluta">
+                                                    DIST
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-3">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control form-control-sm" id="forceInput" placeholder="N" min="0" max="50" value="5" step="0.1">
+                                                <button class="btn btn-outline-warning btn-sm" onclick="setTargetForce()" title="Establecer fuerza objetivo">
+                                                    FORCE
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Grupo GET -->
+                                    <div class="row g-1 mb-2">
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP uSTEP')" title="Microstep setting">
+                                                μSTEP
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP STpos')" title="Posición stepper">
+                                                ST POS
+                                            </button>
+                                        </div>
+                                        <div class="col-2">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP MMpos')" title="Posición en mm">
+                                                MM POS
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP ForceNf')" title="Fuerza en Newtons">
+                                                FORCE N
+                                            </button>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP DISTobj')" title="Distancia ToF">
+                                                DIST OBJ
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Grupo DO -->
+                                    <div class="row g-1 mb-2">
+                                        <div class="col-4">
+                                            <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('DO FORCE CAL')" title="Calibración de fuerza interactiva">
+                                                <i class="bi bi-wrench"></i> FORCE CAL
+                                            </button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-danger btn-sm w-100" onclick="sendGripperCmd('DO GRIP REBOOT')" title="Reset microcontrolador">
+                                                <i class="bi bi-power"></i> REBOOT
+                                            </button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button class="btn btn-success btn-sm w-100" onclick="sendGripperCmd('CONFIG SAVE')" title="Guardar configuración">
+                                                <i class="bi bi-save"></i> SAVE
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-4">
-                                    <button class="btn btn-primary w-100" onclick="sendGripperCommand()">
-                                        <i class="bi bi-send"></i> Enviar
-                                    </button>
+                            </div>
+
+                            <!-- Input de Comandos Manuales -->
+                            <div class="card mt-2">
+                                <div class="card-header py-2">
+                                    <small><i class="bi bi-keyboard"></i> Comando Manual</small>
+                                </div>
+                                <div class="card-body p-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm" id="manualCommand" 
+                                               placeholder="Escribir comando (ej: GET GRIP MMpos)" 
+                                               onkeypress="handleCommandKeyPress(event)"
+                                               autocomplete="off"
+                                               list="commandSuggestions">
+                                        <button class="btn btn-outline-info btn-sm" onclick="showCommandHelp()" title="Mostrar ayuda de comandos">
+                                            <i class="bi bi-question-circle"></i>
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="sendManualCommand()" id="sendManualBtn">
+                                            <i class="bi bi-send"></i> Enviar
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Datalist para autocompletado -->
+                                    <datalist id="commandSuggestions">
+                                        <option value="HELP">
+                                        <option value="CONFIG STALL STINFO">
+                                        <option value="CONFIG STALL DIAG">
+                                        <option value="CONFIG HOMING ONBOOT">
+                                        <option value="CONFIG SET MOTORMODE 0">
+                                        <option value="CONFIG SET MOTORMODE 1">
+                                        <option value="CONFIG SET MOTORMODE 2">
+                                        <option value="MOVE GRIP HOME">
+                                        <option value="MOVE GRIP STEPS ">
+                                        <option value="MOVE GRIP DIST ">
+                                        <option value="GET GRIP uSTEP">
+                                        <option value="GET GRIP STpos">
+                                        <option value="GET GRIP MMpos">
+                                        <option value="GET GRIP ForceNf">
+                                        <option value="GET GRIP ForceGf">
+                                        <option value="GET GRIP DISTobj">
+                                        <option value="DO FORCE CAL">
+                                        <option value="DO GRIP REBOOT">
+                                        <option value="CONFIG SAVE">
+                                    </datalist>
+                                    
+                                    <!-- Historial de comandos -->
+                                    <div class="mt-2">
+                                        <small class="text-muted">Historial:</small>
+                                        <div id="commandHistory" class="small text-muted" style="max-height: 60px; overflow-y: auto;">
+                                            <!-- Historial se carga aquí -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -444,9 +621,9 @@
                                         <p class="mb-0">Modo: <span id="controlMode">Coordenadas</span></p>
                                     </div>
                                     <div class="col-4">
-                                        <h6>Gripper Bluetooth</h6>
-                                        <p class="mb-1">Estado: <span id="bluetoothStatus" class="status-disconnected">Desconectado</span></p>
-                                        <p class="mb-0">MAC: {{ app_state.get('esp32_mac', 'N/A')[:12] }}...</p>
+                                        <h6>Gripper Serie</h6>
+                                        <p class="mb-1">Estado: <span id="serialStatus" class="status-disconnected">Desconectado</span></p>
+                                        <p class="mb-0">Puerto: <span id="serialPort">Auto-detect</span></p>
                                     </div>
                                 </div>
                                 
@@ -513,16 +690,17 @@
                     <div class="col-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <i class="bi bi-diagram-3"></i> Simulación 3D
+                                <i class="bi bi-info-circle"></i> Estado de URRTDE
                             </div>
                             <div class="card-body p-2">
-                                <div class="simulation-container" id="simulationContainer">
-                                    <div class="text-center" id="simulationPlaceholder">
-                                        <i class="bi bi-cpu" style="font-size: 2rem;"></i>
-                                        <p class="mt-2 mb-0">Simulación 3D</p>
-                                        <small>Matplotlib + Robotics Toolbox</small>
+                                <div class="simulation-container" id="urrtdeContainer">
+                                    <div class="text-center" id="urrtdePlaceholder">
+                                        <i class="bi bi-robot" style="font-size: 2rem;"></i>
+                                        <p class="mt-2 mb-0">URRTDE</p>
+                                        <small>Modo Desconectado</small>
+                                        <br><br>
+                                        <div class="badge bg-warning">Robot No Disponible</div>
                                     </div>
-                                    <img id="simulationGif" class="simulation-gif" style="display: none;" alt="Simulación de movimiento">
                                 </div>
                             </div>
                         </div>
@@ -530,7 +708,27 @@
 
                     
 
-                    <!-- Consola de Log -->
+                    <!-- Consola del Gripper -->
+                    <div class="col-12 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-wrench-adjustable"></i> Consola Gripper uSENSE</span>
+                                <div>
+                                    <span class="badge me-2" id="gripperConnectionBadge">Desconectado</span>
+                                    <button class="btn btn-sm btn-outline-light" onclick="clearGripperConsole()">
+                                        <i class="bi bi-trash"></i> Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="gripperConsole" class="console-log" style="height: 150px;">
+                                    <span class="text-info">Consola del Gripper uSENSEGRIP - Comandos y respuestas aparecerán aquí</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consola de Sistema -->
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
@@ -565,8 +763,83 @@
             initializeWebSocket();
             updateSliderValues();
             updateCurrentPositionDisplay();
+            initializeGripperInterface();
             addLogMessage('Sistema web inicializado', 'info');
         });
+
+        // Inicializar interfaz del gripper
+        function initializeGripperInterface() {
+            // Cargar historial de comandos del localStorage
+            const savedHistory = localStorage.getItem('gripperCommandHistory');
+            if (savedHistory) {
+                try {
+                    commandHistory = JSON.parse(savedHistory);
+                    updateCommandHistory();
+                } catch (e) {
+                    console.warn('Error cargando historial de comandos:', e);
+                }
+            }
+            
+            // Validación en tiempo real del input manual
+            const manualInput = document.getElementById('manualCommand');
+            manualInput.addEventListener('input', validateCommand);
+            
+            addGripperMessage('Interfaz del Gripper uSENSEGRIP lista', 'info');
+        }
+
+        // Validar comando en tiempo real
+        function validateCommand() {
+            const input = document.getElementById('manualCommand');
+            const command = input.value.trim().toUpperCase();
+            
+            // Lista de comandos válidos
+            const validCommands = [
+                'HELP',
+                'CONFIG STALL STINFO',
+                'CONFIG STALL DIAG', 
+                'CONFIG HOMING ONBOOT',
+                'CONFIG SET MOTORMODE',
+                'CONFIG SAVE',
+                'MOVE GRIP HOME',
+                'MOVE GRIP STEPS',
+                'MOVE GRIP DIST',
+                'MOVE GRIP TFORCE',
+                'GET GRIP USTEP',
+                'GET GRIP STPOS',
+                'GET GRIP MMPOS',
+                'GET GRIP FORCENF',
+                'GET GRIP FORCEGF',
+                'GET GRIP DISTOBJ',
+                'DO FORCE CAL',
+                'DO GRIP REBOOT'
+            ];
+            
+            let isValid = false;
+            
+            // Verificar si el comando es válido
+            for (let validCmd of validCommands) {
+                if (command === validCmd || command.startsWith(validCmd + ' ')) {
+                    isValid = true;
+                    break;
+                }
+            }
+            
+            // Aplicar estilo visual
+            if (command === '') {
+                input.style.borderColor = '';
+                input.style.backgroundColor = '';
+            } else if (isValid) {
+                input.style.borderColor = '#28a745';
+                input.style.backgroundColor = '#f8fff8';
+            } else {
+                input.style.borderColor = '#dc3545';
+                input.style.backgroundColor = '#fff8f8';
+            }
+            
+            // Habilitar/deshabilitar botón
+            const sendBtn = document.getElementById('sendManualBtn');
+            sendBtn.disabled = !isValid && command !== '';
+        }
 
         // Inicializar WebSocket
         function initializeWebSocket() {
@@ -593,6 +866,15 @@
             
             socket.on('new_log', function(logEntry) {
                 displayLogEntry(logEntry);
+            });
+            
+            // Eventos específicos del gripper
+            socket.on('gripper_response', function(data) {
+                addGripperMessage(data.response, 'response', true);
+            });
+            
+            socket.on('gripper_status', function(data) {
+                updateGripperStatus(data);
             });
         }
 
@@ -632,14 +914,25 @@
                 xboxStatus.className = 'status-disconnected';
             }
             
-            // Actualizar estado Bluetooth
-            const bluetoothStatus = document.getElementById('bluetoothStatus');
-            if (data.bluetooth_connected) {
-                bluetoothStatus.textContent = 'Conectado';
-                bluetoothStatus.className = 'status-connected';
+            // Actualizar estado Serie
+            const serialStatus = document.getElementById('serialStatus');
+            const gripperBadge = document.getElementById('gripperConnectionBadge');
+            
+            if (data.serial_connected) {
+                serialStatus.textContent = 'Conectado';
+                serialStatus.className = 'status-connected';
+                gripperBadge.textContent = 'Conectado';
+                gripperBadge.className = 'badge bg-success me-2';
             } else {
-                bluetoothStatus.textContent = 'Desconectado';
-                bluetoothStatus.className = 'status-disconnected';
+                serialStatus.textContent = 'Desconectado';
+                serialStatus.className = 'status-disconnected';
+                gripperBadge.textContent = 'Desconectado';
+                gripperBadge.className = 'badge bg-danger me-2';
+            }
+            
+            // Actualizar puerto serie si está disponible
+            if (data.serial_port) {
+                document.getElementById('serialPort').textContent = data.serial_port;
             }
             
             // Actualizar posición actual
@@ -727,17 +1020,21 @@
             });
         }
 
+        // Variables globales para gripper
+        let commandHistory = [];
+        let historyIndex = -1;
+
         // Actualizar valores de sliders
         function updateSliderValues() {
             const forceSlider = document.getElementById('gripperForce');
-            const positionSlider = document.getElementById('gripperPosition');
+            const distanceSlider = document.getElementById('gripperDistance');
             
             forceSlider.addEventListener('input', function() {
                 document.getElementById('forceValue').textContent = parseFloat(this.value).toFixed(1);
             });
 
-            positionSlider.addEventListener('input', function() {
-                document.getElementById('positionValue').textContent = this.value;
+            distanceSlider.addEventListener('input', function() {
+                document.getElementById('distanceValue').textContent = parseFloat(this.value).toFixed(1);
             });
         }
 
@@ -766,10 +1063,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    addLogMessage('Movimiento completado exitosamente', 'action');
-                    if (data.simulation_gif) {
-                        showSimulationGif(data.simulation_gif);
-                    }
+                    addLogMessage('Comando de movimiento registrado', 'action');
                 } else {
                     addLogMessage(`Error en movimiento: ${data.message}`, 'error');
                 }
@@ -783,18 +1077,7 @@
             });
         }
 
-        // Mostrar GIF de simulación
-        function showSimulationGif(gifPath) {
-            const placeholder = document.getElementById('simulationPlaceholder');
-            const gifElement = document.getElementById('simulationGif');
-            
-            placeholder.style.display = 'none';
-            // Corregir la URL para usar la ruta estática correcta
-            gifElement.src = '/static/' + gifPath;
-            gifElement.style.display = 'block';
-            
-            addLogMessage('Simulación 3D generada', 'info');
-        }
+
 
         // Ir a Home
         function goHome() {
@@ -881,10 +1164,81 @@
             });
         }
 
-        // Control del gripper
-        function sendGripperCommand() {
+        // ==================== FUNCIONES DEL GRIPPER uSENSE ====================
+
+        // Agregar mensaje a la consola del gripper
+        function addGripperMessage(message, type = 'info', isResponse = false) {
+            const console = document.getElementById('gripperConsole');
+            const timestamp = new Date().toLocaleTimeString();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'gripper-log-entry';
+            
+            let className = 'text-info';
+            let prefix = '→';
+            
+            if (isResponse) {
+                prefix = '←';
+                className = 'text-success';
+            }
+            
+            switch(type) {
+                case 'command': className = 'text-primary'; break;
+                case 'response': className = 'text-success'; break;
+                case 'error': className = 'text-danger'; break;
+                case 'warning': className = 'text-warning'; break;
+            }
+            
+            messageDiv.innerHTML = `<span class="text-muted">[${timestamp}]</span> <span class="text-secondary">${prefix}</span> <span class="${className}">${message}</span>`;
+            console.appendChild(messageDiv);
+            console.scrollTop = console.scrollHeight;
+            
+            // Mantener solo los últimos 50 mensajes
+            while (console.children.length > 50) {
+                console.removeChild(console.firstChild);
+            }
+        }
+
+        // Limpiar consola del gripper
+        function clearGripperConsole() {
+            document.getElementById('gripperConsole').innerHTML = 
+                '<span class="text-info">Consola limpiada - Comandos y respuestas aparecerán aquí</span>';
+        }
+
+        // Enviar comando específico del gripper
+        function sendGripperCmd(command) {
+            addGripperMessage(command, 'command');
+            
+            fetch('/api/gripper/command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.response && data.response !== 'Sin respuesta') {
+                        addGripperMessage(data.response, 'response', true);
+                    } else {
+                        addGripperMessage('Comando enviado exitosamente', 'response', true);
+                    }
+                } else {
+                    addGripperMessage(`Error: ${data.message}`, 'error', true);
+                }
+                
+                addLogMessage(`Comando gripper: ${command}`, 'action');
+            })
+            .catch(error => {
+                addGripperMessage(`Error de conexión: ${error}`, 'error', true);
+                addLogMessage(`Error comando gripper: ${error}`, 'error');
+            });
+        }
+
+        // Control básico del gripper
+        function sendGripperBasic() {
             const force = parseFloat(document.getElementById('gripperForce').value);
-            const position = parseFloat(document.getElementById('gripperPosition').value);
+            const distance = parseFloat(document.getElementById('gripperDistance').value);
 
             fetch('/api/gripper/control', {
                 method: 'POST',
@@ -893,29 +1247,223 @@
                 },
                 body: JSON.stringify({
                     force: force,
-                    position: position
+                    distance: distance
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    addLogMessage(`Gripper: Fuerza=${force}N, Posición=${position}%`, 'action');
+                    addGripperMessage(`Control: Fuerza=${force}N, Distancia=${distance}mm`, 'command');
+                    addLogMessage(`Gripper: Fuerza=${force}N, Distancia=${distance}mm`, 'action');
                 } else {
+                    addGripperMessage(`Error: ${data.message}`, 'error', true);
                     addLogMessage(`Error gripper: ${data.message}`, 'error');
                 }
             });
         }
 
+        function homeGripper() {
+            sendGripperCmd('MOVE GRIP HOME');
+        }
+
         function openGripper() {
-            document.getElementById('gripperPosition').value = 100;
-            document.getElementById('positionValue').textContent = '100';
-            sendGripperCommand();
+            document.getElementById('gripperDistance').value = 100;
+            document.getElementById('distanceValue').textContent = '100.0';
+            sendGripperCmd('MOVE GRIP DIST 100.0');
         }
 
         function closeGripper() {
-            document.getElementById('gripperPosition').value = 0;
-            document.getElementById('positionValue').textContent = '0';
-            sendGripperCommand();
+            document.getElementById('gripperDistance').value = 0;
+            document.getElementById('distanceValue').textContent = '0.0';
+            sendGripperCmd('MOVE GRIP DIST 0.0');
+        }
+
+        // Funciones para comandos específicos con parámetros
+        function moveSteps() {
+            const steps = document.getElementById('stepInput').value;
+            if (!steps) {
+                addGripperMessage('Error: Especifica número de pasos', 'error', true);
+                return;
+            }
+            sendGripperCmd(`MOVE GRIP STEPS ${steps}`);
+        }
+
+        function moveDist() {
+            const dist = document.getElementById('distInput').value;
+            if (!dist) {
+                addGripperMessage('Error: Especifica distancia en mm', 'error', true);
+                return;
+            }
+            sendGripperCmd(`MOVE GRIP DIST ${dist}`);
+        }
+
+        function setTargetForce() {
+            const force = document.getElementById('forceInput').value;
+            if (!force) {
+                addGripperMessage('Error: Especifica fuerza en N', 'error', true);
+                return;
+            }
+            sendGripperCmd(`MOVE GRIP TFORCE ${force}`);
+        }
+
+        function setMotorMode() {
+            const mode = document.getElementById('motorModeSelect').value;
+            if (mode === '') return;
+            
+            const modeNames = {'0': 'Normal', '1': 'High Speed', '2': 'Precision'};
+            sendGripperCmd(`CONFIG SET MOTORMODE ${mode}`);
+            addGripperMessage(`Configurando modo: ${modeNames[mode]}`, 'info');
+        }
+
+        // Comando manual con historial
+        function sendManualCommand() {
+            const commandInput = document.getElementById('manualCommand');
+            const command = commandInput.value.trim();
+            
+            if (!command) {
+                addGripperMessage('Error: Comando vacío', 'error', true);
+                return;
+            }
+
+            // Agregar al historial
+            if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== command) {
+                commandHistory.push(command);
+                // Mantener solo los últimos 20 comandos
+                if (commandHistory.length > 20) {
+                    commandHistory.shift();
+                }
+                updateCommandHistory();
+            }
+
+            // Limpiar input
+            commandInput.value = '';
+            historyIndex = -1;
+
+            // Enviar comando
+            sendGripperCmd(command);
+        }
+
+        function handleCommandKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendManualCommand();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                navigateHistory(-1);
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                navigateHistory(1);
+            }
+        }
+
+        function navigateHistory(direction) {
+            if (commandHistory.length === 0) return;
+            
+            historyIndex += direction;
+            
+            if (historyIndex < -1) {
+                historyIndex = -1;
+            } else if (historyIndex >= commandHistory.length) {
+                historyIndex = commandHistory.length - 1;
+            }
+            
+            const commandInput = document.getElementById('manualCommand');
+            
+            if (historyIndex === -1) {
+                commandInput.value = '';
+            } else {
+                commandInput.value = commandHistory[historyIndex];
+            }
+        }
+
+        function updateCommandHistory() {
+            const historyDiv = document.getElementById('commandHistory');
+            historyDiv.innerHTML = '';
+            
+            // Mostrar últimos 3 comandos
+            const recentCommands = commandHistory.slice(-3).reverse();
+            
+            recentCommands.forEach((cmd, index) => {
+                const cmdSpan = document.createElement('span');
+                cmdSpan.className = 'badge bg-secondary me-1 mb-1 cursor-pointer';
+                cmdSpan.style.cursor = 'pointer';
+                cmdSpan.textContent = cmd.length > 20 ? cmd.substring(0, 20) + '...' : cmd;
+                cmdSpan.title = cmd;
+                
+                cmdSpan.onclick = function() {
+                    const input = document.getElementById('manualCommand');
+                    input.value = cmd;
+                    validateCommand(); // Validar al cargar comando
+                };
+                
+                historyDiv.appendChild(cmdSpan);
+            });
+            
+            // Guardar historial en localStorage
+            try {
+                localStorage.setItem('gripperCommandHistory', JSON.stringify(commandHistory));
+            } catch (e) {
+                console.warn('Error guardando historial de comandos:', e);
+            }
+        }
+
+        // Eventos WebSocket específicos del gripper
+        function initializeGripperWebSocket() {
+            // Escuchar respuestas del gripper en tiempo real
+            socket.on('gripper_response', function(data) {
+                addGripperMessage(data.response, 'response', true);
+            });
+            
+            socket.on('gripper_status', function(data) {
+                updateGripperStatus(data);
+            });
+        }
+
+        function updateGripperStatus(data) {
+            // Actualizar badge de conexión
+            const badge = document.getElementById('gripperConnectionBadge');
+            if (data.connected) {
+                badge.textContent = `Conectado (${data.port || 'N/A'})`;
+                badge.className = 'badge bg-success me-2';
+            } else {
+                badge.textContent = 'Desconectado';
+                badge.className = 'badge bg-danger me-2';
+            }
+        }
+
+        // Función auxiliar para mostrar ayuda de comandos
+        function showCommandHelp() {
+            const helpText = `
+Comandos disponibles para uSENSEGRIP:
+
+HELP - Mostrar ayuda del dispositivo
+CONFIG STALL STINFO - Toggle telemetría StallGuard
+CONFIG HOMING ONBOOT - Toggle homing automático
+CONFIG SET MOTORMODE <0|1|2> - Modo motor (Normal/HS/Precision)
+CONFIG SAVE - Guardar configuración
+
+MOVE GRIP HOME - Ejecutar homing completo
+MOVE GRIP STEPS <int> - Mover pasos relativos
+MOVE GRIP DIST <float> - Mover a distancia absoluta (mm)
+MOVE GRIP TFORCE <float> - Establecer fuerza objetivo (N)
+
+GET GRIP uSTEP - Configuración micropasos
+GET GRIP STpos - Posición stepper (pasos)
+GET GRIP MMpos - Posición en mm
+GET GRIP ForceNf - Fuerza actual (Newtons)
+GET GRIP ForceGf - Fuerza actual (gramos-fuerza)
+GET GRIP DISTobj - Distancia ToF al objeto (mm)
+
+DO FORCE CAL - Calibración interactiva de fuerza
+DO GRIP REBOOT - Reiniciar microcontrolador
+
+Ejemplos:
+MOVE GRIP DIST 25.5
+MOVE GRIP STEPS 100
+CONFIG SET MOTORMODE 1
+            `;
+            
+            addGripperMessage(helpText, 'info');
         }
 
         // Toggle modo de control

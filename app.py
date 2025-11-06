@@ -18,8 +18,7 @@ import numpy as np
 # Importar nuestros módulos
 from robot_modules.ur5_controller import UR5WebController
 from robot_modules.xbox_controller_web import XboxControllerWeb
-from robot_modules.simulation_generator import SimulationGenerator
-from robot_modules.bluetooth_gripper import BluetoothGripperController
+from robot_modules.serial_gripper import SerialGripperController
 from robot_modules.webcam_controller import webcam_controller
 
 # Configuración de la aplicación
@@ -54,7 +53,8 @@ class RobotWebApp:
         self.app_state = {
             'robot_connected': False,
             'xbox_connected': False,
-            'bluetooth_connected': False,
+            'serial_connected': False,
+            'serial_port': None,
             'control_mode': 'coordinates',  # 'coordinates' o 'xbox'
             'robot_status': 'idle',  # 'idle', 'moving', 'error'
             'current_position': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -71,8 +71,7 @@ class RobotWebApp:
         try:
             self.ur5_controller = UR5WebController(self.robot_ip)
             self.xbox_controller = XboxControllerWeb()
-            self.simulation_generator = SimulationGenerator(log_callback=self.add_log_message)
-            self.gripper_controller = BluetoothGripperController(self.esp32_mac)
+            self.gripper_controller = SerialGripperController()  # Auto-detecta puerto
             
             logger.info("✅ Controladores inicializados correctamente")
         except Exception as e:
@@ -80,7 +79,6 @@ class RobotWebApp:
             # Inicializar controladores en modo simulación
             self.ur5_controller = None
             self.xbox_controller = None
-            self.simulation_generator = SimulationGenerator(log_callback=self.add_log_message)
             self.gripper_controller = None
         
         # Hilo para monitoreo continuo
@@ -188,17 +186,6 @@ def move_robot():
         robot_app.add_log_message(f"Comando de movimiento: X={x}, Y={y}, Z={z}", "action")
         
         if robot_app.ur5_controller:
-            # Generar simulación antes del movimiento
-            try:
-                gif_path = robot_app.simulation_generator.generate_movement_gif(
-                    [x, y, z, rx, ry, rz]
-                )
-                if gif_path is None:
-                    robot_app.add_log_message("⚠️ No se pudo generar simulación", "warning")
-            except Exception as sim_error:
-                robot_app.add_log_message(f"❌ Error en simulación: {sim_error}", "error")
-                gif_path = None
-            
             # Ejecutar movimiento real
             success = robot_app.ur5_controller.move_to_coordinates(x, y, z, rx, ry, rz)
             
@@ -206,28 +193,16 @@ def move_robot():
                 robot_app.add_log_message("Movimiento completado exitosamente", "action")
                 return jsonify({
                     'success': True, 
-                    'message': 'Movimiento completado',
-                    'simulation_gif': gif_path
+                    'message': 'Movimiento completado'
                 })
             else:
                 robot_app.add_log_message("Error en movimiento del robot", "error")
                 return jsonify({'success': False, 'message': 'Error en movimiento'})
         else:
-            # Modo simulación
-            try:
-                gif_path = robot_app.simulation_generator.generate_movement_gif(
-                    [x, y, z, rx, ry, rz]
-                )
-                if gif_path is None:
-                    robot_app.add_log_message("⚠️ No se pudo generar simulación", "warning")
-            except Exception as sim_error:
-                robot_app.add_log_message(f"❌ Error en simulación: {sim_error}", "error")
-                gif_path = None
-            robot_app.add_log_message("Movimiento simulado (robot no conectado)", "warning")
+            robot_app.add_log_message("Robot no conectado - comando no enviado", "warning")
             return jsonify({
-                'success': True, 
-                'message': 'Movimiento simulado',
-                'simulation_gif': gif_path
+                'success': False, 
+                'message': 'Robot no conectado'
             })
     
     except Exception as e:
@@ -288,25 +263,44 @@ def save_position():
 
 @app.route('/api/gripper/control', methods=['POST'])
 def control_gripper():
-    """Controlar gripper via Bluetooth"""
+    """Controlar gripper con fuerza y distancia"""
     try:
         data = request.get_json()
-        force = float(data['force'])
-        position = float(data['position'])
+        force = float(data.get('force', 5.0))
         
-        robot_app.add_log_message(f"Control gripper: Fuerza={force}N, Posición={position}%", "action")
+        # Soporte para ambos modos: position (legacy) y distance (nuevo)
+        if 'distance' in data:
+            distance = float(data['distance'])
+            robot_app.add_log_message(f"Control gripper: Fuerza={force}N, Distancia={distance}mm", "action")
+        else:
+            position = float(data.get('position', 0.0))
+            distance = position  # Conversión temporal
+            robot_app.add_log_message(f"Control gripper: Fuerza={force}N, Posición={position}%", "action")
         
         # Actualizar estado
         with robot_app.state_lock:
             robot_app.app_state['gripper_force'] = force
-            robot_app.app_state['gripper_position'] = position
+            robot_app.app_state['gripper_position'] = distance
         
         if robot_app.gripper_controller:
-            success = robot_app.gripper_controller.send_gripper_command(force, position)
-            if success:
-                return jsonify({'success': True, 'message': 'Comando enviado al gripper'})
+            # Usar el nuevo método de distancia si está disponible
+            if hasattr(robot_app.gripper_controller, 'usense_move_to_distance'):
+                success, response = robot_app.gripper_controller.usense_move_to_distance(distance)
+                if success:
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Comando enviado al gripper',
+                        'response': response
+                    })
+                else:
+                    return jsonify({'success': False, 'message': response})
             else:
-                return jsonify({'success': False, 'message': 'Error comunicando con gripper'})
+                # Fallback al método anterior
+                success = robot_app.gripper_controller.send_gripper_command(force, distance)
+                if success:
+                    return jsonify({'success': True, 'message': 'Comando enviado al gripper'})
+                else:
+                    return jsonify({'success': False, 'message': 'Error comunicando con gripper'})
         else:
             robot_app.add_log_message("Control gripper simulado", "warning")
             return jsonify({'success': True, 'message': 'Control gripper simulado'})
@@ -314,6 +308,146 @@ def control_gripper():
     except Exception as e:
         robot_app.add_log_message(f"Error controlando gripper: {str(e)}", "error")
         return jsonify({'success': False, 'message': str(e)}), 400
+
+@app.route('/api/gripper/command', methods=['POST'])
+def send_gripper_command():
+    """Enviar comando específico al gripper uSENSE"""
+    try:
+        data = request.get_json()
+        command = data.get('command', '').strip()
+        
+        if not command:
+            return jsonify({'success': False, 'message': 'Comando vacío'}), 400
+        
+        robot_app.add_log_message(f"Comando gripper: {command}", "action")
+        
+        if not robot_app.gripper_controller:
+            robot_app.add_log_message("Gripper no inicializado", "warning")
+            return jsonify({'success': False, 'message': 'Gripper no inicializado'})
+        
+        # Conectar si no está conectado
+        if not robot_app.gripper_controller.connected:
+            if not robot_app.gripper_controller.connect():
+                return jsonify({'success': False, 'message': 'No se pudo conectar al gripper'})
+        
+        # Manejar comandos específicos con métodos dedicados
+        command_upper = command.upper()
+        
+        if command_upper == "MOVE GRIP HOME":
+            success, response = robot_app.gripper_controller.usense_home_gripper()
+        elif command_upper.startswith("MOVE GRIP DIST"):
+            try:
+                distance = float(command.split()[-1])
+                success, response = robot_app.gripper_controller.usense_move_to_distance(distance)
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP DIST <valor>'})
+        elif command_upper.startswith("MOVE GRIP TFORCE"):
+            try:
+                force = float(command.split()[-1])
+                success, response = robot_app.gripper_controller.usense_set_target_force(force)
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP TFORCE <valor>'})
+        elif command_upper == "GET GRIP MMPOS":
+            success, response = robot_app.gripper_controller.usense_get_position()
+        elif command_upper == "GET GRIP STPOS":
+            success, response = robot_app.gripper_controller.usense_get_stepper_position()
+        elif command_upper == "GET GRIP FORCENF":
+            success, response = robot_app.gripper_controller.usense_get_force_newtons()
+        elif command_upper == "GET GRIP FORCEGF":
+            success, response = robot_app.gripper_controller.usense_get_force_grams()
+        elif command_upper == "GET GRIP DISTOBJ":
+            success, response = robot_app.gripper_controller.usense_get_distance_object()
+        elif command_upper == "GET GRIP USTEP":
+            success, response = robot_app.gripper_controller.usense_get_microstep_setting()
+        elif command_upper.startswith("MOVE GRIP STEPS"):
+            try:
+                steps = int(command.split()[-1])
+                success, response = robot_app.gripper_controller.usense_move_steps(steps)
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP STEPS <número>'})
+        elif command_upper.startswith("CONFIG SET MOTORMODE"):
+            try:
+                mode = int(command.split()[-1])
+                success, response = robot_app.gripper_controller.usense_config_motor_mode(mode)
+            except (ValueError, IndexError):
+                return jsonify({'success': False, 'message': 'Formato inválido. Usar: CONFIG SET MOTORMODE <0|1|2>'})
+        elif command_upper == "DO FORCE CAL":
+            success, response = robot_app.gripper_controller.usense_do_force_calibration()
+        elif command_upper == "DO GRIP REBOOT":
+            success, response = robot_app.gripper_controller.usense_reboot_gripper()
+        elif command_upper == "CONFIG SAVE":
+            success, response = robot_app.gripper_controller.usense_save_config()
+        else:
+            # Usar método genérico para otros comandos
+            success, response = robot_app.gripper_controller.send_custom_command(command, use_retry=True)
+        
+        if success:
+            robot_app.add_log_message(f"Respuesta gripper: {response or 'OK'}", "info")
+            return jsonify({
+                'success': True,
+                'message': 'Comando ejecutado exitosamente',
+                'response': response or 'Sin respuesta'
+            })
+        else:
+            robot_app.add_log_message(f"Error gripper: {response}", "error")
+            return jsonify({'success': False, 'message': response or 'Error ejecutando comando'})
+    
+    except Exception as e:
+        robot_app.add_log_message(f"Error enviando comando gripper: {str(e)}", "error")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/gripper/status')
+def get_gripper_status():
+    """Obtener estado detallado del gripper"""
+    try:
+        if robot_app.gripper_controller:
+            status = robot_app.gripper_controller.get_gripper_status()
+            return jsonify(status)
+        else:
+            return jsonify({
+                'connected': False,
+                'force': 0.0,
+                'position': 0.0,
+                'port': None,
+                'message': 'Gripper no inicializado'
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/gripper/connect', methods=['POST'])
+def connect_gripper():
+    """Conectar/reconectar al gripper"""
+    try:
+        if not robot_app.gripper_controller:
+            return jsonify({'success': False, 'message': 'Gripper no inicializado'})
+        
+        success = robot_app.gripper_controller.connect()
+        
+        if success:
+            robot_app.add_log_message("Gripper conectado exitosamente", "info")
+            return jsonify({'success': True, 'message': 'Gripper conectado'})
+        else:
+            robot_app.add_log_message("Error conectando gripper", "error")
+            return jsonify({'success': False, 'message': 'Error conectando gripper'})
+    
+    except Exception as e:
+        robot_app.add_log_message(f"Error en conexión gripper: {str(e)}", "error")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/gripper/disconnect', methods=['POST'])
+def disconnect_gripper():
+    """Desconectar del gripper"""
+    try:
+        if robot_app.gripper_controller:
+            robot_app.gripper_controller.disconnect()
+        
+        robot_app.add_log_message("Gripper desconectado", "info")
+        return jsonify({'success': True, 'message': 'Gripper desconectado'})
+    
+    except Exception as e:
+        robot_app.add_log_message(f"Error desconectando gripper: {str(e)}", "error")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/control-mode', methods=['POST'])
 def toggle_control_mode():
@@ -466,31 +600,6 @@ def handle_status_request():
 
 # ==================== ARCHIVOS ESTÁTICOS ====================
 
-@app.route('/simulations/<path:filename>')
-def serve_simulation(filename):
-    """Servir archivos de simulación"""
-    try:
-        from flask import send_from_directory
-        import os
-        
-        # Ruta absoluta al directorio de simulaciones
-        simulations_dir = os.path.join(app.root_path, 'static', 'simulations')
-        
-        # Verificar que el archivo existe
-        filepath = os.path.join(simulations_dir, filename)
-        if os.path.exists(filepath):
-            logger.info(f"Sirviendo archivo de simulación: {filename}")
-            response = send_from_directory(simulations_dir, filename)
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            return response
-        else:
-            logger.error(f"Archivo de simulación no encontrado: {filename}")
-            return "Archivo no encontrado", 404
-            
-    except Exception as e:
-        logger.error(f"Error sirviendo simulación: {e}")
-        return f"Error sirviendo archivo: {str(e)}", 500
-
 # ==================== INICIALIZACIÓN ====================
 
 def create_directories():
@@ -499,7 +608,6 @@ def create_directories():
         'templates',
         'static/css',
         'static/js',
-        'static/simulations',
         'robot_modules'
     ]
     

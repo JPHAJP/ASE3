@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 
 robot_app.log
+.venv/
+.vscode/
