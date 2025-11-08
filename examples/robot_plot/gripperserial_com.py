@@ -1,21 +1,15 @@
 # ==================== CONFIGURACIÓN ====================
 SERIAL_PORT = None  # Se detectará automáticamente
 BAUD_RATE = 115200
-TARGET_FORCE = 100  # Fuerza objetivo en gF
-MAX_SAMPLES = 300  # Máximo de muestras a graficar
-ENABLE_MAX_SAMPLES = True  # True: limitar muestras, False: sin límite
-WINDOW_SIZE = 500   # Tamaño de ventana deslizante para visualización (0 = mostrar todo)
+TARGET_FORCE = 300  # Fuerza objetivo en gF
+MAX_SAMPLES = 5000  # Máximo de muestras a graficar
+ENABLE_MAX_SAMPLES = False  # True: limitar muestras, False: sin límite
+WINDOW_SIZE = 1000   # Tamaño de ventana deslizante para visualización (0 = mostrar todo)
 
 # ============== CONFIGURACIÓN PID GAINS ================
 PID_KP = 1.0        # Ganancia proporcional
-PID_KI = 0.1        # Ganancia integral  
-PID_KD = 0.05       # Ganancia derivativabin/env# ==================== CONFIGURACIÓN ====================
-SERIAL_PORT = None  # Se detectará automáticamente
-BAUD_RATE = 115200
-TARGET_FORCE = 500  # Fuerza objetivo en gF
-MAX_SAMPLES = 5000  # Máximo de muestras a graficar
-ENABLE_MAX_SAMPLES = True  # True: limitar muestras, False: sin límite
-WINDOW_SIZE = 500   # Tamaño de ventana deslizante para visualización (0 = mostrar todo)n3
+PID_KI = 0.01       # Ganancia integral  
+PID_KD = 0.8        # Ganancia derivativa
 """
 Script para monitorear y graficar datos de fuerza del ESP32
 """
@@ -27,14 +21,10 @@ import re
 import time
 import glob
 import os
+import threading
+import queue
 from collections import deque
-
-# ==================== CONFIGURACIÓN ====================
-SERIAL_PORT = None  # Se detectará automáticamente
-BAUD_RATE = 115200
-TARGET_FORCE = 100  # Fuerza objetivo en gF
-MAX_SAMPLES = 300  # Máximo de muestras a graficar
-ENABLE_MAX_SAMPLES = True  # True: limitar muestras, False: sin límite
+from datetime import datetime
 
 # =======================================================
 
@@ -78,6 +68,13 @@ class ESP32GripMonitor:
         self.sample_count = 0
         self.finished = False
         
+        # Threading para comunicación no bloqueante
+        self.running = False
+        self.send_queue = queue.Queue()
+        self.receive_queue = queue.Queue()
+        self.receiver_thread = None
+        self.sender_thread = None
+        
     def connect(self):
         """Conecta al puerto serial"""
         global SERIAL_PORT
@@ -90,7 +87,7 @@ class ESP32GripMonitor:
                 return False
         
         try:
-            self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+            self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)  # Timeout corto
             time.sleep(2)  # Esperar a que se establezca la conexión
             print(f"✓ Conectado a {SERIAL_PORT} a {BAUD_RATE} baud")
             return True
@@ -101,7 +98,7 @@ class ESP32GripMonitor:
             SERIAL_PORT = find_serial_port()
             if SERIAL_PORT:
                 try:
-                    self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+                    self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
                     time.sleep(2)
                     print(f"✓ Conectado a {SERIAL_PORT} a {BAUD_RATE} baud")
                     return True
@@ -109,19 +106,73 @@ class ESP32GripMonitor:
                     print(f"✗ Error al conectar a {SERIAL_PORT}: {e2}")
             return False
     
+    def start_threads(self):
+        """Inicia los hilos de comunicación"""
+        if not self.ser or not self.ser.is_open:
+            return False
+            
+        self.running = True
+        
+        # Hilo de recepción
+        self.receiver_thread = threading.Thread(target=self._receiver_worker, daemon=True)
+        self.receiver_thread.start()
+        
+        # Hilo de envío
+        self.sender_thread = threading.Thread(target=self._sender_worker, daemon=True)
+        self.sender_thread.start()
+        
+        print("✓ Hilos de comunicación serial iniciados")
+        return True
+    
+    def _receiver_worker(self):
+        """Hilo que recibe datos continuamente del puerto serial"""
+        while self.running and self.ser and self.ser.is_open:
+            try:
+                if self.ser.in_waiting > 0:
+                    line = self.ser.readline().decode('utf-8', errors='ignore').strip()
+                    if line:
+                        self.receive_queue.put(line)
+                else:
+                    time.sleep(0.01)  # Pequeña pausa si no hay datos
+                    
+            except Exception as e:
+                if self.running:
+                    print(f"❌ Error en recepción serial: {e}")
+                break
+    
+    def _sender_worker(self):
+        """Hilo que envía comandos desde la cola"""
+        while self.running and self.ser and self.ser.is_open:
+            try:
+                command = self.send_queue.get(timeout=0.5)
+                
+                if command == "STOP_THREAD":
+                    break
+                    
+                self.ser.write(f"{command}\n".encode())
+                self.ser.flush()  # Forzar envío inmediato
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                print(f"📤 [{timestamp}] Comando enviado: {command}")
+                
+                self.send_queue.task_done()
+                time.sleep(0.05)  # Pequeña pausa entre comandos
+                
+            except queue.Empty:
+                continue
+            except Exception as e:
+                if self.running:
+                    print(f"❌ Error en envío serial: {e}")
+                break
+    
     def send_command(self, command):
-        """Envía comando al ESP32"""
-        if self.ser and self.ser.is_open:
-            self.ser.write(f"{command}\n".encode())
-            print(f"📤 Comando enviado: {command}")
-            # Pequeña pausa para procesamiento
-            time.sleep(0.1)
+        """Envía comando de forma no bloqueante"""
+        if self.running and self.ser and self.ser.is_open:
+            self.send_queue.put(command)
         else:
             print(f"❌ Error: Puerto serie no disponible para enviar comando: {command}")
     
     def parse_force(self, line):
         """Parsea la línea para extraer el valor de fuerza"""
-        # Intentar múltiples patrones para mayor flexibilidad
         patterns = [
             r'Grip force:\s*(\d+(?:\.\d+)?)',  # Patrón original
             r'Force:\s*(\d+(?:\.\d+)?)',       # Patrón alternativo 1
@@ -129,7 +180,7 @@ class ESP32GripMonitor:
             r'(\d+(?:\.\d+)?)\s*gF',           # Patrón con unidad gF
             r'(\d+(?:\.\d+)?)\s*g',            # Patrón con unidad g
             r'F:\s*(\d+(?:\.\d+)?)',           # Patrón corto
-            r'^(\d+(?:\.\d+)?)$',              # Número simple (solo dígitos y punto decimal)
+            r'^(\d+(?:\.\d+)?)$',              # Número simple
         ]
         
         for pattern in patterns:
@@ -137,24 +188,33 @@ class ESP32GripMonitor:
             if match:
                 force_value = float(match.group(1))
                 # Convertir a gF si parece estar en otras unidades
-                # Si el valor es muy pequeño (< 10), probablemente esté en otra unidad
                 if force_value < 10:
-                    force_value = force_value * 100  # Convertir de alguna unidad a gF
+                    force_value = force_value * 100
                 return force_value
         return None
     
     def read_data(self):
-        """Lee datos del serial"""
-        if self.ser and self.ser.in_waiting > 0:
-            try:
-                line = self.ser.readline().decode('utf-8', errors='ignore').strip()
+        """Lee datos de la cola de recepción (no bloqueante)"""
+        new_data_count = 0
+        
+        try:
+            while True:
+                line = self.receive_queue.get_nowait()
+                
                 if line:
-                    print(f"📥 Línea recibida: {line}")  # Debug: mostrar línea recibida
+                    # Debug: mostrar línea recibida ocasionalmente
+                    if self.sample_count % 50 == 0:
+                        print(f"📥 Línea recibida: {line}")
+                    
                     force = self.parse_force(line)
                     if force is not None:
                         self.force_data.append(force)
                         self.sample_count += 1
-                        print(f"✅ Muestra {self.sample_count}: {force} gF")
+                        new_data_count += 1
+                        
+                        # Mostrar progreso cada 25 muestras
+                        if self.sample_count % 25 == 0:
+                            print(f"✅ Muestra {self.sample_count}: {force} gF")
                         
                         # Verificar si alcanzamos el máximo
                         if ENABLE_MAX_SAMPLES and self.sample_count >= MAX_SAMPLES:
@@ -163,22 +223,41 @@ class ESP32GripMonitor:
                                 self.send_command("MOVE GRIP HOME")
                                 self.finished = True
                     else:
-                        print(f"⚠️ No se pudo parsear fuerza de: {line}")  # Debug: línea no parseada
-            except Exception as e:
-                print(f"❌ Error al leer: {e}")
-        else:
-            # Debug: verificar estado del puerto
-            if self.ser and self.ser.is_open:
-                # Sin datos disponibles, esto es normal
-                pass
-            else:
-                print("⚠️ Puerto serie no disponible")
+                        # Debug ocasional para líneas no parseadas
+                        if self.sample_count % 100 == 0:
+                            print(f"⚠️ No se pudo parsear fuerza de: {line[:50]}")
+        
+        except queue.Empty:
+            pass
+        
+        return new_data_count > 0
     
-    def close(self):
-        """Cierra la conexión serial"""
+    def stop(self):
+        """Detiene los hilos y cierra la conexión"""
+        print("🔄 Deteniendo monitor serial...")
+        self.running = False
+        
+        # Señal de parada al hilo de envío
+        try:
+            self.send_queue.put("STOP_THREAD")
+        except:
+            pass
+        
+        # Esperar hilos
+        if self.sender_thread and self.sender_thread.is_alive():
+            self.sender_thread.join(timeout=2)
+            
+        if self.receiver_thread and self.receiver_thread.is_alive():
+            self.receiver_thread.join(timeout=2)
+        
+        # Cerrar puerto serial
         if self.ser and self.ser.is_open:
-            self.ser.close()
-            print("📡 Conexión serial cerrada")
+            try:
+                self.ser.close()
+            except:
+                pass
+            
+        print("📡 Conexión serial cerrada")
 
 # Crear monitor
 monitor = ESP32GripMonitor()
@@ -299,7 +378,7 @@ def animate(frame):
 def main():
     """Función principal"""
     print("=" * 60)
-    print("ESP32 Gripper Force Monitor")
+    print("ESP32 Gripper Force Monitor (Serial con Threading)")
     print("=" * 60)
     print(f"Puerto: {SERIAL_PORT if SERIAL_PORT else 'Auto-detectar'}")
     print(f"Baud Rate: {BAUD_RATE}")
@@ -315,9 +394,13 @@ def main():
     if not monitor.connect():
         return
     
+    # Iniciar hilos de comunicación
+    if not monitor.start_threads():
+        return
+    
     # Configurar ganancias PID
     print("\n🔧 Configurando ganancias PID...")
-    time.sleep(0.5)
+    time.sleep(1.0)  # Esperar estabilización
     gains_command = f"CONFIG SET GAINS {PID_KP} {PID_KI} {PID_KD}"
     monitor.send_command(gains_command)
     
@@ -337,7 +420,8 @@ def main():
         repeat=True
     )
     
-    print("\n✓ Graficando... (Cierra la ventana para terminar)\n")
+    print("\n✓ Monitor iniciado... (Cierra la ventana para terminar)")
+    print("🔄 Los comandos se envían de forma no bloqueante\n")
     
     try:
         plt.show()
@@ -352,7 +436,7 @@ def main():
             time.sleep(1)  # Esperar a que se ejecute el comando
         except Exception as e:
             print(f"⚠️ Error al enviar comando HOME: {e}")
-        monitor.close()
+        monitor.stop()
         print("✅ Programa terminado correctamente")
 
 if __name__ == "__main__":
