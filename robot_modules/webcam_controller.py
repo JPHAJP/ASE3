@@ -1,51 +1,24 @@
 """
-Controlador de webcam para la aplicación web UR5
-Maneja streaming de video y captura de imágenes
+Controlador simple de webcam
 """
 
 import cv2
-import threading
-import time
-import logging
-from datetime import datetime
 import os
-import base64
-import numpy as np
-
-logger = logging.getLogger(__name__)
 
 class WebcamController:
-    def __init__(self, camera_index=0):
-        """
-        Inicializar controlador de webcam
-        
-        Args:
-            camera_index: índice de la cámara (0 por defecto)
-        """
-        self.camera_index = camera_index
+    def __init__(self):
         self.cap = None
         self.is_active = False
-        self.is_streaming = False
-        self.current_frame = None
-        self.frame_lock = threading.Lock()
-        self.stream_thread = None
-        
-        # Configuración de la cámara
-        self.width = 640
-        self.height = 480
-        self.fps = 30
+        self.camera_index = 0
         
         # Directorio para capturas
         self.captures_dir = "static/captures"
         os.makedirs(self.captures_dir, exist_ok=True)
-        
-        logger.info(f"WebcamController inicializado para cámara {camera_index}")
     
     def start_camera(self):
         """Iniciar la cámara"""
         try:
             if self.is_active:
-                logger.info("La cámara ya está activa")
                 return True
             
             logger.info(f"Iniciando cámara {self.camera_index}...")

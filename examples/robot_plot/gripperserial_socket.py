@@ -1,7 +1,7 @@
 # ==================== CONFIGURACIÓN ====================
-SOCKET_HOST = "192.168.0.101"  # IP del dispositivo ESP32
+SOCKET_HOST = "192.168.68.110"  # IP del dispositivo ESP32
 SOCKET_PORT = 23               # Puerto Telnet
-TARGET_FORCE = 300             # Fuerza objetivo en gF
+TARGET_FORCE = 1000             # Fuerza objetivo en gF
 MAX_SAMPLES = 5000             # Máximo de muestras a graficar
 ENABLE_MAX_SAMPLES = False     # True: limitar muestras, False: sin límite
 WINDOW_SIZE = 1000             # Tamaño de ventana deslizante para visualización (0 = mostrar todo)

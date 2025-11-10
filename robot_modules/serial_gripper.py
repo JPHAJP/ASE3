@@ -1,15 +1,14 @@
 """
-Controlador serie COM del gripper para la aplicación web
-Convertido de Bluetooth a comunicación serie para Linux
+Controlador socket TCP del gripper para la aplicación web
+Convertido de comunicación serie a socket con hilos separados
 """
 
-import serial
-import serial.tools.list_ports
+import socket
 import time
 import threading
 import logging
 import json
-import glob
+import queue
 import os
 from datetime import datetime
 

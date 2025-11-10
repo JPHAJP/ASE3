@@ -18,8 +18,11 @@ import numpy as np
 # Importar nuestros módulos
 from robot_modules.ur5_controller import UR5WebController
 from robot_modules.xbox_controller_web import XboxControllerWeb
-from robot_modules.serial_gripper import SerialGripperController
-from robot_modules.webcam_controller import webcam_controller
+from robot_modules.gripper_config import get_gripper_controller, get_connection_info
+from robot_modules.webcam_simple import WebcamController
+
+# Instancia global del controlador de webcam
+webcam_controller = WebcamController()
 
 # Configuración de la aplicación
 app = Flask(__name__)
@@ -71,7 +74,11 @@ class RobotWebApp:
         try:
             self.ur5_controller = UR5WebController(self.robot_ip)
             self.xbox_controller = XboxControllerWeb()
-            self.gripper_controller = SerialGripperController()  # Auto-detecta puerto
+            self.gripper_controller = get_gripper_controller()  # Usa configuración automática
+            
+            # Mostrar información de conexión del gripper
+            conn_info = get_connection_info()
+            logger.info(f"📡 Gripper: {conn_info['description']}")
             
             logger.info("✅ Controladores inicializados correctamente")
         except Exception as e:
@@ -84,6 +91,10 @@ class RobotWebApp:
         # Hilo para monitoreo continuo
         self.monitoring_thread = None
         self.should_stop_monitoring = False
+        
+        # Hilo específico para monitoreo del gripper
+        self.gripper_monitoring_thread = None
+        self.should_stop_gripper_monitoring = False
         
         logger.info("🚀 RobotWebApp inicializada")
 
@@ -114,6 +125,67 @@ class RobotWebApp:
         self.should_stop_monitoring = False
         self.monitoring_thread = threading.Thread(target=self._monitor_robot, daemon=True)
         self.monitoring_thread.start()
+        
+        # Iniciar también monitoreo del gripper
+        self.start_gripper_monitoring()
+
+    def start_gripper_monitoring(self):
+        """Iniciar hilo de monitoreo específico del gripper"""
+        if self.gripper_monitoring_thread and self.gripper_monitoring_thread.is_alive():
+            return
+        
+        if not self.gripper_controller:
+            logger.warning("⚠️ No se puede iniciar monitoreo del gripper: controlador no disponible")
+            return
+        
+        self.should_stop_gripper_monitoring = False
+        self.gripper_monitoring_thread = threading.Thread(target=self._monitor_gripper, daemon=True)
+        self.gripper_monitoring_thread.start()
+        logger.info("🔍 Monitoreo del gripper iniciado")
+
+    def _monitor_gripper(self):
+        """Monitor continuo del gripper para capturar todas las respuestas"""
+        last_emission_time = 0
+        
+        while not self.should_stop_gripper_monitoring:
+            try:
+                if self.gripper_controller and self.gripper_controller.connected:
+                    # Obtener todas las respuestas recibidas
+                    received_data = self.gripper_controller.get_received_data()
+                    
+                    current_time = time.time()
+                    
+                    for data_item in received_data:
+                        # Emitir cada respuesta inmediatamente por WebSocket
+                        socketio.emit('gripper_live_response', {
+                            'response': data_item['data'],
+                            'timestamp': data_item.get('timestamp', datetime.now().strftime('%H:%M:%S.%f')[:-3]),
+                            'is_live': True
+                        })
+                        
+                        # Solo agregar al log del sistema cada 2 segundos para evitar spam
+                        if current_time - last_emission_time > 2.0:
+                            self.add_log_message(f"Gripper Monitor → {data_item['data']}", "info")
+                            last_emission_time = current_time
+                
+                # Pausa para no sobrecargar
+                time.sleep(0.2)
+                
+            except Exception as e:
+                if not self.should_stop_gripper_monitoring:
+                    logger.error(f"❌ Error en monitoreo del gripper: {e}")
+                    time.sleep(1)  # Pausa más larga en caso de error
+
+    def stop_monitoring(self):
+        """Detener hilos de monitoreo"""
+        self.should_stop_monitoring = True
+        self.should_stop_gripper_monitoring = True
+        
+        if self.monitoring_thread:
+            self.monitoring_thread.join(timeout=2)
+        
+        if self.gripper_monitoring_thread:
+            self.gripper_monitoring_thread.join(timeout=2)
         self.add_log_message("Monitor del robot iniciado", "info")
 
     def stop_monitoring(self):
@@ -311,7 +383,7 @@ def control_gripper():
 
 @app.route('/api/gripper/command', methods=['POST'])
 def send_gripper_command():
-    """Enviar comando específico al gripper uSENSE"""
+    """Enviar comando específico al gripper uSENSE - SIN LIMITACIONES"""
     try:
         data = request.get_json()
         command = data.get('command', '').strip()
@@ -319,7 +391,7 @@ def send_gripper_command():
         if not command:
             return jsonify({'success': False, 'message': 'Comando vacío'}), 400
         
-        robot_app.add_log_message(f"Comando gripper: {command}", "action")
+        robot_app.add_log_message(f"Comando gripper RAW: {command}", "action")
         
         if not robot_app.gripper_controller:
             robot_app.add_log_message("Gripper no inicializado", "warning")
@@ -330,71 +402,109 @@ def send_gripper_command():
             if not robot_app.gripper_controller.connect():
                 return jsonify({'success': False, 'message': 'No se pudo conectar al gripper'})
         
-        # Manejar comandos específicos con métodos dedicados
-        command_upper = command.upper()
-        
-        if command_upper == "MOVE GRIP HOME":
-            success, response = robot_app.gripper_controller.usense_home_gripper()
-        elif command_upper.startswith("MOVE GRIP DIST"):
-            try:
-                distance = float(command.split()[-1])
-                success, response = robot_app.gripper_controller.usense_move_to_distance(distance)
-            except (ValueError, IndexError):
-                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP DIST <valor>'})
-        elif command_upper.startswith("MOVE GRIP TFORCE"):
-            try:
-                force = float(command.split()[-1])
-                success, response = robot_app.gripper_controller.usense_set_target_force(force)
-            except (ValueError, IndexError):
-                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP TFORCE <valor>'})
-        elif command_upper == "GET GRIP MMPOS":
-            success, response = robot_app.gripper_controller.usense_get_position()
-        elif command_upper == "GET GRIP STPOS":
-            success, response = robot_app.gripper_controller.usense_get_stepper_position()
-        elif command_upper == "GET GRIP FORCENF":
-            success, response = robot_app.gripper_controller.usense_get_force_newtons()
-        elif command_upper == "GET GRIP FORCEGF":
-            success, response = robot_app.gripper_controller.usense_get_force_grams()
-        elif command_upper == "GET GRIP DISTOBJ":
-            success, response = robot_app.gripper_controller.usense_get_distance_object()
-        elif command_upper == "GET GRIP USTEP":
-            success, response = robot_app.gripper_controller.usense_get_microstep_setting()
-        elif command_upper.startswith("MOVE GRIP STEPS"):
-            try:
-                steps = int(command.split()[-1])
-                success, response = robot_app.gripper_controller.usense_move_steps(steps)
-            except (ValueError, IndexError):
-                return jsonify({'success': False, 'message': 'Formato inválido. Usar: MOVE GRIP STEPS <número>'})
-        elif command_upper.startswith("CONFIG SET MOTORMODE"):
-            try:
-                mode = int(command.split()[-1])
-                success, response = robot_app.gripper_controller.usense_config_motor_mode(mode)
-            except (ValueError, IndexError):
-                return jsonify({'success': False, 'message': 'Formato inválido. Usar: CONFIG SET MOTORMODE <0|1|2>'})
-        elif command_upper == "DO FORCE CAL":
-            success, response = robot_app.gripper_controller.usense_do_force_calibration()
-        elif command_upper == "DO GRIP REBOOT":
-            success, response = robot_app.gripper_controller.usense_reboot_gripper()
-        elif command_upper == "CONFIG SAVE":
-            success, response = robot_app.gripper_controller.usense_save_config()
-        else:
-            # Usar método genérico para otros comandos
-            success, response = robot_app.gripper_controller.send_custom_command(command, use_retry=True)
+        # ENVIAR COMANDO DIRECTAMENTE SIN VALIDACIONES NI LIMITACIONES
+        # Usar send_raw_command con validate=False para permitir cualquier comando
+        success, response = robot_app.gripper_controller.send_raw_command(command, timeout=3.0, validate=False)
         
         if success:
             robot_app.add_log_message(f"Respuesta gripper: {response or 'OK'}", "info")
+            # Emitir respuesta por WebSocket para la consola en tiempo real
+            socketio.emit('gripper_response', {
+                'command': command,
+                'response': response or 'Sin respuesta',
+                'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
+            })
             return jsonify({
                 'success': True,
-                'message': 'Comando ejecutado exitosamente',
+                'message': 'Comando enviado exitosamente',
                 'response': response or 'Sin respuesta'
             })
         else:
             robot_app.add_log_message(f"Error gripper: {response}", "error")
-            return jsonify({'success': False, 'message': response or 'Error ejecutando comando'})
+            # Emitir error por WebSocket
+            socketio.emit('gripper_response', {
+                'command': command,
+                'response': f"ERROR: {response}",
+                'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
+                'is_error': True
+            })
+            return jsonify({'success': False, 'message': response or 'Error enviando comando'})
     
     except Exception as e:
         robot_app.add_log_message(f"Error enviando comando gripper: {str(e)}", "error")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/gripper/command/raw', methods=['POST'])
+def send_raw_gripper_command():
+    """Endpoint adicional para comandos completamente sin procesar"""
+    try:
+        data = request.get_json()
+        command = data.get('command', '').strip()
+        
+        if not command:
+            return jsonify({'success': False, 'message': 'Comando vacío'}), 400
+        
+        robot_app.add_log_message(f"Comando gripper CRUDO: {command}", "action")
+        
+        if not robot_app.gripper_controller:
+            return jsonify({'success': False, 'message': 'Gripper no inicializado'})
+        
+        if not robot_app.gripper_controller.connected:
+            if not robot_app.gripper_controller.connect():
+                return jsonify({'success': False, 'message': 'No se pudo conectar al gripper'})
+        
+        # Enviar comando directamente al socket sin ningún procesamiento
+        success = robot_app.gripper_controller.send_command(command)
+        
+        if success:
+            # Esperar respuesta
+            time.sleep(0.5)
+            received_data = robot_app.gripper_controller.get_received_data()
+            
+            if received_data:
+                latest_response = received_data[-1]['data'] if received_data else 'Sin respuesta'
+                robot_app.add_log_message(f"Respuesta gripper RAW: {latest_response}", "info")
+                
+                # Emitir TODAS las respuestas por WebSocket
+                for data_item in received_data:
+                    socketio.emit('gripper_response', {
+                        'command': command,
+                        'response': data_item['data'],
+                        'timestamp': data_item.get('timestamp', datetime.now().strftime('%H:%M:%S.%f')[:-3]),
+                        'is_raw': True
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Comando crudo enviado',
+                    'response': latest_response,
+                    'all_responses': [item['data'] for item in received_data]
+                })
+            else:
+                socketio.emit('gripper_response', {
+                    'command': command,
+                    'response': 'Comando enviado por socket (sin respuesta inmediata)',
+                    'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
+                    'is_raw': True
+                })
+                return jsonify({
+                    'success': True,
+                    'message': 'Comando enviado (sin respuesta inmediata)',
+                    'response': 'Comando enviado por socket'
+                })
+        else:
+            socketio.emit('gripper_response', {
+                'command': command,
+                'response': 'ERROR: No se pudo enviar comando por socket',
+                'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
+                'is_error': True,
+                'is_raw': True
+            })
+            return jsonify({'success': False, 'message': 'Error enviando comando por socket'})
+            
+    except Exception as e:
+        robot_app.add_log_message(f"Error comando RAW: {str(e)}", "error")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 @app.route('/api/gripper/status')
 def get_gripper_status():
@@ -426,7 +536,11 @@ def connect_gripper():
         
         if success:
             robot_app.add_log_message("Gripper conectado exitosamente", "info")
-            return jsonify({'success': True, 'message': 'Gripper conectado'})
+            return jsonify({
+                'success': True, 
+                'message': 'Gripper conectado',
+                'port': f"{robot_app.gripper_controller.host}:{robot_app.gripper_controller.port}"
+            })
         else:
             robot_app.add_log_message("Error conectando gripper", "error")
             return jsonify({'success': False, 'message': 'Error conectando gripper'})
@@ -509,8 +623,6 @@ def start_webcam():
     try:
         success = webcam_controller.start_camera()
         if success:
-            # También iniciar streaming automáticamente
-            webcam_controller.start_streaming()
             robot_app.add_log_message("Cámara web iniciada", "info")
             return jsonify({'success': True, 'message': 'Cámara iniciada exitosamente'})
         else:
@@ -536,10 +648,10 @@ def stop_webcam():
 def capture_photo():
     """Capturar foto con la webcam"""
     try:
-        photo_path = webcam_controller.capture_photo()
+        photo_path = webcam_controller.capture_image()
         if photo_path:
             robot_app.add_log_message(f"Foto capturada: {photo_path}", "info")
-            return jsonify({'success': True, 'photo_url': f'/static/{photo_path}'})
+            return jsonify({'success': True, 'photo_url': f'/static/captures/{photo_path}'})
         else:
             return jsonify({'success': False, 'message': 'No se pudo capturar la foto'}), 500
             
@@ -551,7 +663,10 @@ def capture_photo():
 def webcam_status():
     """Obtener estado de la webcam"""
     try:
-        status = webcam_controller.get_camera_status()
+        status = {
+            'is_active': webcam_controller.is_active,
+            'camera_index': webcam_controller.camera_index
+        }
         return jsonify(status)
         
     except Exception as e:
@@ -597,6 +712,78 @@ def handle_disconnect():
 def handle_status_request():
     """Solicitud de estado actual"""
     emit('status_update', robot_app.app_state)
+
+@socketio.on('start_webcam')
+def handle_start_webcam():
+    """Manejar inicio de webcam via WebSocket"""
+    try:
+        success = webcam_controller.start_camera()
+        if success:
+            robot_app.add_log_message("Cámara web iniciada", "info")
+            emit('webcam_response', {'success': True, 'message': 'Cámara iniciada exitosamente'})
+            logger.info("✅ Webcam iniciada via WebSocket")
+        else:
+            emit('webcam_response', {'success': False, 'error': 'No se pudo iniciar la cámara'})
+            logger.error("❌ Error iniciando webcam via WebSocket")
+    except Exception as e:
+        logger.error(f"Error en start_webcam WebSocket: {e}")
+        emit('webcam_response', {'success': False, 'error': str(e)})
+
+@socketio.on('stop_webcam')
+def handle_stop_webcam():
+    """Manejar detención de webcam via WebSocket"""
+    try:
+        webcam_controller.stop_camera()
+        robot_app.add_log_message("Cámara web detenida", "info")
+        emit('webcam_response', {'success': True, 'message': 'Cámara detenida'})
+        logger.info("✅ Webcam detenida via WebSocket")
+    except Exception as e:
+        logger.error(f"Error en stop_webcam WebSocket: {e}")
+        emit('webcam_response', {'success': False, 'error': str(e)})
+
+@socketio.on('capture_image')
+def handle_capture_image():
+    """Manejar captura de imagen via WebSocket"""
+    try:
+        photo_path = webcam_controller.capture_image()
+        if photo_path:
+            robot_app.add_log_message(f"Foto capturada: {photo_path}", "info")
+            emit('webcam_response', {'success': True, 'filename': photo_path})
+            logger.info(f"📸 Foto capturada via WebSocket: {photo_path}")
+        else:
+            emit('webcam_response', {'success': False, 'error': 'No se pudo capturar la foto'})
+            logger.error("❌ Error capturando foto via WebSocket")
+    except Exception as e:
+        logger.error(f"Error en capture_image WebSocket: {e}")
+        emit('webcam_response', {'success': False, 'error': str(e)})
+
+@socketio.on('switch_camera')
+def handle_switch_camera(data):
+    """Manejar cambio de cámara via WebSocket"""
+    try:
+        # Simplemente usar la función del controlador
+        webcam_controller.switch_camera()
+        
+        robot_app.add_log_message(f"Cambiado a cámara {webcam_controller.camera_index}", "info")
+        emit('webcam_response', {'success': True, 'message': f'Cambiado a cámara {webcam_controller.camera_index}', 'camera_index': webcam_controller.camera_index})
+        logger.info(f"🔄 Cambiado a cámara {webcam_controller.camera_index}")
+        
+    except Exception as e:
+        logger.error(f"Error en switch_camera WebSocket: {e}")
+        emit('webcam_response', {'success': False, 'error': str(e)})
+
+@socketio.on('get_webcam_status')
+def handle_get_webcam_status():
+    """Obtener estado de la webcam via WebSocket"""
+    try:
+        status = {
+            'is_active': webcam_controller.is_active,
+            'camera_index': webcam_controller.camera_index
+        }
+        emit('webcam_status', status)
+    except Exception as e:
+        logger.error(f"Error obteniendo estado webcam: {e}")
+        emit('webcam_status', {'error': str(e)})
 
 # ==================== ARCHIVOS ESTÁTICOS ====================
 

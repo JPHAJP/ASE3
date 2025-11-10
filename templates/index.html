@@ -9,81 +9,253 @@
     
     <!-- Socket.IO para comunicación en tiempo real -->
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    
     <style>
         :root {
+            /* Tema Claro */
             --primary-blue: #0066cc;
             --secondary-blue: #004499;
             --light-blue: #e6f3ff;
             --accent-blue: #3399ff;
             --dark-blue: #003366;
+            --neon-blue: #00d4ff;
+            --neon-cyan: #00ffff;
+            --bg-primary: linear-gradient(135deg, #e6f3ff 0%, #ffffff 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --console-bg: #1a1a1a;
+            --console-text: #00ff00;
+        }
+
+        [data-theme="dark"] {
+            /* Tema Oscuro */
+            --primary-blue: #0099ff;
+            --secondary-blue: #0066cc;
+            --light-blue: #1a2332;
+            --accent-blue: var(--neon-blue);
+            --dark-blue: #0d1117;
+            --neon-blue: #00d4ff;
+            --neon-cyan: #00ffff;
+            --bg-primary: linear-gradient(135deg, #0d1117 0%, #1a2332 100%);
+            --card-bg: rgba(26, 35, 50, 0.95);
+            --text-primary: #f0f6fc;
+            --text-secondary: #7d8590;
+            --border-color: #30363d;
+            --console-bg: #0d1117;
+            --console-text: var(--neon-cyan);
+        }
+
+        [data-theme="dark"] body,
+        [data-theme="dark"] .card-body,
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] h6,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h4,
+        [data-theme="dark"] h3,
+        [data-theme="dark"] h2,
+        [data-theme="dark"] h1,
+        [data-theme="dark"] p,
+        [data-theme="dark"] span:not(.badge):not(.log-timestamp):not(.log-action):not(.log-info):not(.log-warning):not(.log-error),
+        [data-theme="dark"] small,
+        [data-theme="dark"] .text-primary {
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .navbar-brand,
+        [data-theme="dark"] .navbar-text {
+            color: #ffffff !important;
         }
 
         body {
-            background: linear-gradient(135deg, var(--light-blue) 0%, #ffffff 100%);
+            background: var(--bg-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            padding-top: 70px; /* Reducido para desktop */
         }
 
         .card {
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 102, 204, 0.1);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px rgba(0, 102, 204, 0.15);
+            border-radius: 16px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 212, 255, 0.2);
         }
 
         .card-header {
-            background: linear-gradient(90deg, var(--primary-blue), var(--accent-blue));
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue));
             color: white;
-            border-radius: 12px 12px 0 0 !important;
+            border-radius: 16px 16px 0 0 !important;
             border: none;
             font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .card-header:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
-            background: linear-gradient(90deg, var(--primary-blue), var(--accent-blue));
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue));
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, var(--neon-blue), transparent);
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:hover::before {
+            width: 100%;
+            height: 100%;
         }
 
         .btn-success {
-            background: linear-gradient(90deg, #28a745, #20c997);
+            background: linear-gradient(135deg, #28a745, #20c997);
             border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(32, 201, 151, 0.4);
         }
 
         .btn-warning {
-            background: linear-gradient(90deg, #ffc107, #ffb300);
+            background: linear-gradient(135deg, #ffc107, #ffb300);
             border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 179, 0, 0.4);
         }
 
         .form-control, .form-select {
-            border: 2px solid var(--light-blue);
-            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             transition: all 0.3s ease;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
 
         .form-control:focus, .form-select:focus {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        /* Estilos específicos para tema oscuro en formularios */
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background: rgba(26, 35, 50, 0.8) !important;
+            color: #f0f6fc !important;
+            border-color: #30363d;
+        }
+
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background: rgba(26, 35, 50, 0.9) !important;
+            color: #f0f6fc !important;
+            border-color: var(--neon-blue);
+        }
+
+        [data-theme="dark"] .form-control::placeholder {
+            color: #7d8590 !important;
+        }
+
+        [data-theme="dark"] input[type="number"]::-webkit-outer-spin-button,
+        [data-theme="dark"] input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .form-range {
+            background: transparent;
+        }
+
+        .form-range::-webkit-slider-track {
+            background: var(--border-color);
+            border-radius: 8px;
+            height: 8px;
+        }
+
+        .form-range::-webkit-slider-thumb {
+            background: linear-gradient(135deg, var(--primary-blue), var(--neon-blue));
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            box-shadow: 0 4px 8px rgba(0, 212, 255, 0.3);
         }
 
         .status-connected {
-            color: #28a745;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px currentColor;
+            font-weight: bold;
         }
 
         .status-disconnected {
-            color: #dc3545;
+            color: #ff4757;
+            text-shadow: 0 0 10px currentColor;
+            font-weight: bold;
         }
 
         .status-moving {
-            color: #ffc107;
+            color: #ffa502;
+            text-shadow: 0 0 10px currentColor;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .coord-input {
@@ -91,39 +263,59 @@
         }
 
         .video-container {
-            background: var(--dark-blue);
-            border-radius: 8px;
-            height: 250px;
+            background: linear-gradient(135deg, var(--dark-blue), #1a2332);
+            border-radius: 12px;
+            height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--neon-cyan);
+            border: 2px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 49%, var(--neon-blue) 50%, transparent 51%);
+            opacity: 0.1;
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
         .simulation-container {
-            background: var(--dark-blue);
-            border-radius: 8px;
+            background: linear-gradient(135deg, var(--dark-blue), #1a2332);
+            border-radius: 12px;
             width: 100%;
-            aspect-ratio: 1;
+            height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            max-width: 300px;
-            margin: 0 auto;
+            color: var(--neon-cyan);
+            border: 2px solid var(--border-color);
             position: relative;
             overflow: hidden;
         }
 
         .webcam-container {
             background: #000;
-            border-radius: 8px;
+            border-radius: 12px;
             height: 300px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             overflow: hidden;
+            border: 2px solid var(--border-color);
         }
 
         .webcam-stream {
@@ -133,110 +325,568 @@
             border-radius: 8px;
         }
 
+        .simulation-container::after {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .console-log {
-            background: #1a1a1a;
-            color: #00ff00;
-            border-radius: 8px;
-            height: 200px;
+            background: var(--console-bg);
+            color: var(--console-text);
+            border-radius: 12px;
+            height: 250px;
             overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 10px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 13px;
+            padding: 15px;
             white-space: pre-wrap;
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        .console-log::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan), var(--neon-blue));
+            animation: console-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes console-glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
 
         .console-log::-webkit-scrollbar {
-            width: 8px;
+            width: 12px;
         }
 
         .console-log::-webkit-scrollbar-track {
-            background: #2a2a2a;
-            border-radius: 4px;
+            background: rgba(26, 26, 26, 0.5);
+            border-radius: 6px;
         }
 
         .console-log::-webkit-scrollbar-thumb {
-            background: var(--primary-blue);
-            border-radius: 4px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--neon-blue));
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .console-log::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan));
         }
 
         .toggle-switch {
             position: relative;
-            width: 60px;
-            height: 30px;
-            background: #ccc;
-            border-radius: 15px;
+            width: 70px;
+            height: 35px;
+            background: var(--border-color);
+            border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
+            border: 2px solid var(--primary-blue);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
         }
 
         .toggle-switch.active {
-            background: var(--primary-blue);
+            background: linear-gradient(135deg, var(--primary-blue), var(--neon-blue));
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
         }
 
         .toggle-slider {
             position: absolute;
             top: 2px;
             left: 2px;
-            width: 26px;
-            height: 26px;
-            background: white;
+            width: 29px;
+            height: 29px;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
             border-radius: 50%;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .toggle-switch.active .toggle-slider {
-            transform: translateX(30px);
+            transform: translateX(35px);
+            background: linear-gradient(135deg, var(--neon-cyan), #ffffff);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
         }
 
         .program-item {
-            background: linear-gradient(45deg, var(--light-blue), #f8f9fa);
+            background: linear-gradient(135deg, var(--light-blue), var(--card-bg));
             border: 2px solid var(--primary-blue);
-            border-radius: 8px;
-            padding: 10px;
-            margin: 5px 0;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 8px 0;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        /* Estilos específicos para program-item en tema oscuro */
+        [data-theme="dark"] .program-item {
+            background: linear-gradient(135deg, rgba(26, 35, 50, 0.6), rgba(26, 35, 50, 0.8));
+            color: #f0f6fc !important;
+            border-color: var(--neon-blue);
+        }
+
+        [data-theme="dark"] .program-item i {
+            color: var(--neon-cyan) !important;
+        }
+
+        .program-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+            transition: left 0.5s;
         }
 
         .program-item:hover {
-            background: linear-gradient(45deg, var(--accent-blue), var(--primary-blue));
+            background: linear-gradient(135deg, var(--accent-blue), var(--primary-blue));
             color: white;
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+            border-color: var(--neon-blue);
         }
 
+        .program-item:hover::before {
+            left: 100%;
+        }
+
+        /* Nuevo diseño del navbar desde cero */
         .navbar {
-            background: linear-gradient(90deg, var(--dark-blue), var(--primary-blue)) !important;
+            background: linear-gradient(135deg, var(--dark-blue), var(--primary-blue)) !important;
+            border-bottom: 2px solid var(--neon-blue);
+            box-shadow: 0 2px 20px rgba(0, 212, 255, 0.2);
+            padding: 0.75rem 1rem;
+            min-height: 60px;
+        }
+
+        .navbar-brand {
+            color: #ffffff !important;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar-brand:hover {
+            color: var(--neon-cyan) !important;
+            text-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .navbar-brand .bi {
+            font-size: 1.5rem;
+            color: var(--neon-cyan) !important;
+            animation: pulse 2s infinite;
+        }
+
+        .navbar-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .system-status .bi {
+            color: var(--neon-cyan) !important;
+            animation: rotate 3s linear infinite;
+        }
+
+        .theme-toggle-btn {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 2px solid var(--neon-blue) !important;
+            color: #ffffff !important;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--neon-blue) !important;
+            color: #000000 !important;
+            transform: rotate(180deg);
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+
+        .theme-toggle-btn .bi {
+            font-size: 1.2rem;
+        }
+
+        /* Animaciones para el navbar */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive del navbar */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0.5rem 0.75rem;
+                min-height: 55px;
+            }
+            
+            .navbar-brand {
+                font-size: 1rem;
+            }
+            
+            .system-status {
+                font-size: 0.8rem;
+                padding: 3px 8px;
+            }
+            
+            .theme-toggle-btn {
+                width: 40px;
+                height: 40px;
+            }
+            
+            body {
+                padding-top: 65px; /* Menos padding para tablets */
+            }
+        }
+
+        @media (max-width: 576px) {
+            .navbar-controls {
+                gap: 8px;
+            }
+            
+            .system-status span.status-text {
+                display: none;
+            }
+            
+            body {
+                padding-top: 60px; /* Aún menos padding para móviles */
+            }
+        }
+
+        @media (min-width: 992px) {
+            body {
+                padding-top: 70px; /* Padding apropiado para desktop */
+            }
         }
 
         .position-display {
             background: var(--light-blue);
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 2px solid var(--border-color);
+            position: relative;
+            color: var(--text-primary);
+        }
+
+        /* Estilos específicos para position-display en tema oscuro */
+        [data-theme="dark"] .position-display {
+            background: rgba(26, 35, 50, 0.6);
+            border-color: #30363d;
+        }
+
+        [data-theme="dark"] .position-display h6,
+        [data-theme="dark"] .position-display small {
+            color: #f0f6fc !important;
+        }
+
+        /* Asegurar que todos los badges se vean bien */
+        [data-theme="dark"] .badge {
+            color: #ffffff !important;
+        }
+
+        /* Botones en tema oscuro */
+        [data-theme="dark"] .btn-outline-primary {
+            color: var(--neon-blue) !important;
+            border-color: var(--neon-blue) !important;
+        }
+
+        [data-theme="dark"] .btn-outline-primary:hover {
+            background: var(--neon-blue) !important;
+            color: #000000 !important;
+        }
+
+        [data-theme="dark"] .btn-outline-light {
+            color: #f0f6fc !important;
+            border-color: #7d8590 !important;
+        }
+
+        [data-theme="dark"] .btn-outline-light:hover {
+            background: #f0f6fc !important;
+            color: #0d1117 !important;
+        }
+
+        .position-display::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(45deg, var(--neon-blue), transparent, var(--neon-cyan), transparent);
+            border-radius: 12px;
+            z-index: -1;
+            animation: border-glow 3s linear infinite;
+        }
+
+        @keyframes border-glow {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
         }
 
         .log-entry {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            padding: 2px 0;
+            border-left: 3px solid transparent;
+            padding-left: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .log-entry:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-left-color: var(--neon-blue);
         }
 
         .log-timestamp {
-            color: #888;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
 
         .log-action {
-            color: #00ff00;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px currentColor;
+            font-weight: bold;
         }
 
         .log-info {
-            color: #3399ff;
+            color: var(--accent-blue);
+            text-shadow: 0 0 3px currentColor;
         }
 
         .log-warning {
-            color: #ffaa00;
+            color: #ffa502;
+            text-shadow: 0 0 5px currentColor;
+            font-weight: bold;
         }
 
         .log-error {
-            color: #ff4444;
+            color: #ff4757;
+            text-shadow: 0 0 8px currentColor;
+            font-weight: bold;
+        }
+
+        /* Botón para cambiar tema */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--card-bg);
+            border: 2px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Responsive mejoras */
+        @media (max-width: 768px) {
+            .coord-input {
+                max-width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .simulation-container,
+            .video-container {
+                height: 150px;
+            }
+            
+            .webcam-container {
+                height: 150px !important;
+            }
+            
+            /* Stack las columnas en dispositivos móviles */
+            .col-lg-6 {
+                margin-bottom: 2rem;
+            }
+            
+            .console-log {
+                height: 200px !important;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .coord-input {
+                font-size: 12px;
+            }
+            
+            .btn-sm {
+                font-size: 10px;
+                padding: 0.1rem 0.3rem;
+            }
+            
+            .console-log {
+                height: 150px !important;
+                font-size: 10px;
+            }
+            
+            .webcam-container {
+                height: 120px !important;
+            }
+        }
+
+        /* Mejoras en el diseño de las tarjetas */
+        .card-header {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+
+        /* Espaciado mejorado para el layout de dos columnas */
+        .container-fluid {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        /* Tarjetas más compactas */
+        .card {
+            margin-bottom: 0.75rem !important;
+        }
+
+        .card-body {
+            padding: 0.75rem;
+        }
+
+        /* Mejora del contraste visual */
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        /* Optimización de altura de consolas */
+        .console-log {
+            height: 280px;
+            font-size: 12px;
+        }
+
+        /* Altura de contenedores multimedia */
+        .webcam-container, .simulation-container {
+            min-height: 180px;
+        }
+
+        /* Botones más compactos para ahorrar espacio */
+        .btn-sm {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Labels más pequeños para controles */
+        .form-label {
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Program items más compactos */
+        .program-item {
+            padding: 10px;
+            margin: 4px 0;
+            font-size: 0.9rem;
+        }
+
+        /* Optimización del layout general para mantener todo visible */
+        @media (min-width: 992px) {
+            .col-lg-6 {
+                max-height: calc(100vh - 100px);
+                overflow-y: auto;
+                padding-right: 5px;
+            }
+            
+            .container-fluid {
+                max-height: none;
+                overflow: visible;
+                padding-top: 5px;
+            }
+        }
+
+        /* Reglas generales para tema oscuro - capturar cualquier texto que se escape */
+        [data-theme="dark"] * {
+            border-color: #30363d;
+        }
+
+        [data-theme="dark"] .card-body > *,
+        [data-theme="dark"] .card-body label,
+        [data-theme="dark"] .card-body div,
+        [data-theme="dark"] .row > div > *:not(.badge):not(.btn) {
+            color: #f0f6fc !important;
+        }
+
+        /* Asegurar que los iconos se vean bien */
+        [data-theme="dark"] .bi {
+            color: var(--neon-cyan);
+        }
+
+        [data-theme="dark"] .card-header .bi {
+            color: #ffffff !important;
+        }
+
+        /* Los sliders en tema oscuro */
+        [data-theme="dark"] .form-range::-webkit-slider-track {
+            background: #30363d !important;
+        }
+
+        [data-theme="dark"] .form-range::-webkit-slider-thumb {
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan)) !important;
         }
 
         .loading-spinner {
@@ -254,32 +904,78 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Estilos específicos para botones de webcam */
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            border-radius: 8px;
+        }
+
+        .btn-sm:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Animación para botón de cambio de cámara */
+        @keyframes rotate-camera {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-warning:hover .bi-arrow-repeat {
+            animation: rotate-camera 0.5s ease-in-out;
+        }
+
+        /* Mejoras para el video stream */
+        .webcam-stream {
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .webcam-stream:hover {
+            box-shadow: 0 6px 12px rgba(0, 212, 255, 0.3);
+        }
     </style>
 </head>
-<body>
-    <nav class="navbar navbar-dark mb-4">
+<body data-theme="dark">
+    <!-- Nuevo navbar completamente rediseñado -->
+    <nav class="navbar navbar-dark fixed-top">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">
-                <i class="bi bi-robot"></i> Control de Robot Industrial UR5e
-            </span>
-            <span class="navbar-text">
-                <i class="bi bi-wifi" id="connectionIcon"></i> 
-                <span id="connectionStatus">Conectando...</span>
-            </span>
+            <!-- Brand/Logo -->
+            <div class="navbar-brand">
+                <i class="bi bi-robot"></i>
+                <span>Control Robot UR5e Industrial</span>
+            </div>
+            
+            <!-- Controles del navbar -->
+            <div class="navbar-controls">
+                <!-- Estado del sistema -->
+                <div class="system-status">
+                    <i class="bi bi-wifi"></i>
+                    <span class="status-text">Sistema Activo</span>
+                </div>
+                
+                <!-- Botón de cambio de tema -->
+                <button class="btn theme-toggle-btn" onclick="toggleTheme()" id="themeToggle" title="Cambiar a tema claro">
+                    <i class="bi bi-sun-fill" id="themeIcon"></i>
+                </button>
+            </div>
         </div>
     </nav>
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Panel de Control -->
+            <!-- COLUMNA IZQUIERDA - TODOS LOS CONTROLES -->
             <div class="col-lg-6 mb-4">
-                <div class="card h-100">
+                <!-- Control de Posición del Robot -->
+                <div class="card mb-3">
                     <div class="card-header">
-                        <i class="bi bi-controller"></i> Panel de Control
+                        <i class="bi bi-crosshair"></i> Control de Posición del Robot
                     </div>
                     <div class="card-body">
-                        <!-- Control de Coordenadas -->
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <h6 class="text-primary">Coordenadas (mm y grados)</h6>
                             <div class="row g-2">
                                 <div class="col-2">
@@ -307,18 +1003,27 @@
                                     <input type="number" class="form-control coord-input" id="coordRZ" step="1" value="0">
                                 </div>
                             </div>
-                            <button class="btn btn-primary mt-2" onclick="moveToCoordinates()" id="moveBtn">
-                                <i class="bi bi-arrow-right-circle"></i> Mover Robot
-                            </button>
+                            <div class="row g-2 mt-2">
+                                <div class="col-8">
+                                    <button class="btn btn-primary w-100" onclick="moveToCoordinates()" id="moveBtn">
+                                        <i class="bi bi-arrow-right-circle"></i> Mover Robot a Posición
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-success w-100" onclick="goHome()">
+                                        <i class="bi bi-house-door"></i> Home
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Gestión de Posiciones -->
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <h6 class="text-primary">Gestión de Posiciones</h6>
                             <div class="row g-2">
                                 <div class="col-4">
                                     <button class="btn btn-outline-primary w-100" onclick="listPositions()">
-                                        <i class="bi bi-list"></i> Ver Posiciones
+                                        <i class="bi bi-list"></i> Ver
                                     </button>
                                 </div>
                                 <div class="col-4">
@@ -326,261 +1031,21 @@
                                 </div>
                                 <div class="col-2">
                                     <button class="btn btn-success w-100" onclick="savePosition()">
-                                        <i class="bi bi-save"></i> Guardar
+                                        <i class="bi bi-save"></i>
                                     </button>
                                 </div>
                                 <div class="col-2">
                                     <button class="btn btn-warning w-100" onclick="loadPosition()">
-                                        <i class="bi bi-upload"></i> Cargar
+                                        <i class="bi bi-upload"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Control de Gripper uSENSE -->
-                        <div class="mb-4">
-                            <h6 class="text-primary">Control de Gripper uSENSEGRIP</h6>
-                            
-                            <!-- Control Básico -->
-                            <div class="card mt-2">
-                                <div class="card-header py-2">
-                                    <small><i class="bi bi-sliders"></i> Control Básico</small>
-                                </div>
-                                <div class="card-body p-2">
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label small">Fuerza (N)</label>
-                                            <input type="range" class="form-range" id="gripperForce" min="0" max="50" value="5" step="0.1">
-                                            <span id="forceValue">5.0</span> N
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label small">Distancia (mm)</label>
-                                            <input type="range" class="form-range" id="gripperDistance" min="0" max="100" value="0" step="0.1">
-                                            <span id="distanceValue">0.0</span> mm
-                                        </div>
-                                    </div>
-                                    <div class="row g-2 mt-2">
-                                        <div class="col-3">
-                                            <button class="btn btn-success btn-sm w-100" onclick="openGripper()">
-                                                <i class="bi bi-arrows-expand"></i> Abrir
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-warning btn-sm w-100" onclick="closeGripper()">
-                                                <i class="bi bi-arrows-collapse"></i> Cerrar
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-info btn-sm w-100" onclick="homeGripper()">
-                                                <i class="bi bi-house"></i> Home
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-primary btn-sm w-100" onclick="sendGripperBasic()">
-                                                <i class="bi bi-send"></i> Enviar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Comandos Específicos -->
-                            <div class="card mt-2">
-                                <div class="card-header py-2">
-                                    <small><i class="bi bi-terminal"></i> Comandos uSENSEGRIP</small>
-                                </div>
-                                <div class="card-body p-2">
-                                    <!-- Grupo HELP & CONFIG -->
-                                    <div class="row g-1 mb-2">
-                                        <div class="col-2">
-                                            <button class="btn btn-info btn-sm w-100" onclick="sendGripperCmd('HELP')" title="Mostrar ayuda">
-                                                HELP
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG STALL STINFO')" title="Toggle StallGuard telemetry">
-                                                STALL INFO
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG HOMING ONBOOT')" title="Toggle homing on boot">
-                                                AUTO HOME
-                                            </button>
-                                        </div>
-                                        <div class="col-4">
-                                            <select class="form-select form-select-sm" id="motorModeSelect" onchange="setMotorMode()">
-                                                <option value="">Modo Motor</option>
-                                                <option value="0">Normal</option>
-                                                <option value="1">High Speed</option>
-                                                <option value="2">Precision</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <!-- Grupo MOVE -->
-                                    <div class="row g-1 mb-2">
-                                        <div class="col-3">
-                                            <button class="btn btn-success btn-sm w-100" onclick="sendGripperCmd('MOVE GRIP HOME')" title="Ejecutar homing completo">
-                                                HOME
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="input-group">
-                                                <input type="number" class="form-control form-control-sm" id="stepInput" placeholder="Steps" min="-10000" max="10000" value="100">
-                                                <button class="btn btn-outline-primary btn-sm" onclick="moveSteps()" title="Mover pasos relativos">
-                                                    STEPS
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="input-group">
-                                                <input type="number" class="form-control form-control-sm" id="distInput" placeholder="mm" min="0" max="100" value="10" step="0.1">
-                                                <button class="btn btn-outline-success btn-sm" onclick="moveDist()" title="Mover a distancia absoluta">
-                                                    DIST
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col-3">
-                                            <div class="input-group">
-                                                <input type="number" class="form-control form-control-sm" id="forceInput" placeholder="N" min="0" max="50" value="5" step="0.1">
-                                                <button class="btn btn-outline-warning btn-sm" onclick="setTargetForce()" title="Establecer fuerza objetivo">
-                                                    FORCE
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Grupo GET -->
-                                    <div class="row g-1 mb-2">
-                                        <div class="col-2">
-                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP uSTEP')" title="Microstep setting">
-                                                μSTEP
-                                            </button>
-                                        </div>
-                                        <div class="col-2">
-                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP STpos')" title="Posición stepper">
-                                                ST POS
-                                            </button>
-                                        </div>
-                                        <div class="col-2">
-                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP MMpos')" title="Posición en mm">
-                                                MM POS
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP ForceNf')" title="Fuerza en Newtons">
-                                                FORCE N
-                                            </button>
-                                        </div>
-                                        <div class="col-3">
-                                            <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP DISTobj')" title="Distancia ToF">
-                                                DIST OBJ
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Grupo DO -->
-                                    <div class="row g-1 mb-2">
-                                        <div class="col-4">
-                                            <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('DO FORCE CAL')" title="Calibración de fuerza interactiva">
-                                                <i class="bi bi-wrench"></i> FORCE CAL
-                                            </button>
-                                        </div>
-                                        <div class="col-4">
-                                            <button class="btn btn-danger btn-sm w-100" onclick="sendGripperCmd('DO GRIP REBOOT')" title="Reset microcontrolador">
-                                                <i class="bi bi-power"></i> REBOOT
-                                            </button>
-                                        </div>
-                                        <div class="col-4">
-                                            <button class="btn btn-success btn-sm w-100" onclick="sendGripperCmd('CONFIG SAVE')" title="Guardar configuración">
-                                                <i class="bi bi-save"></i> SAVE
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Input de Comandos Manuales -->
-                            <div class="card mt-2">
-                                <div class="card-header py-2">
-                                    <small><i class="bi bi-keyboard"></i> Comando Manual</small>
-                                </div>
-                                <div class="card-body p-2">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control form-control-sm" id="manualCommand" 
-                                               placeholder="Escribir comando (ej: GET GRIP MMpos)" 
-                                               onkeypress="handleCommandKeyPress(event)"
-                                               autocomplete="off"
-                                               list="commandSuggestions">
-                                        <button class="btn btn-outline-info btn-sm" onclick="showCommandHelp()" title="Mostrar ayuda de comandos">
-                                            <i class="bi bi-question-circle"></i>
-                                        </button>
-                                        <button class="btn btn-primary btn-sm" onclick="sendManualCommand()" id="sendManualBtn">
-                                            <i class="bi bi-send"></i> Enviar
-                                        </button>
-                                    </div>
-                                    
-                                    <!-- Datalist para autocompletado -->
-                                    <datalist id="commandSuggestions">
-                                        <option value="HELP">
-                                        <option value="CONFIG STALL STINFO">
-                                        <option value="CONFIG STALL DIAG">
-                                        <option value="CONFIG HOMING ONBOOT">
-                                        <option value="CONFIG SET MOTORMODE 0">
-                                        <option value="CONFIG SET MOTORMODE 1">
-                                        <option value="CONFIG SET MOTORMODE 2">
-                                        <option value="MOVE GRIP HOME">
-                                        <option value="MOVE GRIP STEPS ">
-                                        <option value="MOVE GRIP DIST ">
-                                        <option value="GET GRIP uSTEP">
-                                        <option value="GET GRIP STpos">
-                                        <option value="GET GRIP MMpos">
-                                        <option value="GET GRIP ForceNf">
-                                        <option value="GET GRIP ForceGf">
-                                        <option value="GET GRIP DISTobj">
-                                        <option value="DO FORCE CAL">
-                                        <option value="DO GRIP REBOOT">
-                                        <option value="CONFIG SAVE">
-                                    </datalist>
-                                    
-                                    <!-- Historial de comandos -->
-                                    <div class="mt-2">
-                                        <small class="text-muted">Historial:</small>
-                                        <div id="commandHistory" class="small text-muted" style="max-height: 60px; overflow-y: auto;">
-                                            <!-- Historial se carga aquí -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Programas Preestablecidos -->
-                        <div class="mb-4">
-                            <h6 class="text-primary">Rutinas Preestablecidas</h6>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="program-item" onclick="runProgram(1)">
-                                        <i class="bi bi-play-circle"></i> Rutina de Calibración
-                                    </div>
-                                    <div class="program-item" onclick="runProgram(2)">
-                                        <i class="bi bi-arrow-repeat"></i> Ciclo de Prueba
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="program-item" onclick="runProgram(3)">
-                                        <i class="bi bi-house"></i> Posición Inicial
-                                    </div>
-                                    <div class="program-item" onclick="runProgram(4)">
-                                        <i class="bi bi-shield-check"></i> Rutina Seguridad
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Toggle Control -->
-                        <div class="mb-3">
+                        <!-- Modo de Control -->
+                        <div>
                             <h6 class="text-primary">Modo de Control</h6>
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center justify-content-center">
                                 <span class="me-3">Coordenadas</span>
                                 <div class="toggle-switch" id="controlToggle" onclick="toggleControlMode()">
                                     <div class="toggle-slider"></div>
@@ -588,116 +1053,273 @@
                                 <span class="ms-3">Xbox Controller</span>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Botón Home -->
-                        <div class="mb-3">
-                            <button class="btn btn-success w-100" onclick="goHome()">
-                                <i class="bi bi-house-door"></i> Ir a Posición Home
-                            </button>
+                <!-- Control de Gripper uSENSEGRIP -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-wrench-adjustable"></i> Control de Gripper uSENSEGRIP</span>
+                        <span class="badge bg-success" id="gripperConnectionBadge">Conectado (192.168.1.100:502)</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Botones y Inputs -->
+                        <div class="card mt-2">
+                            <div class="card-header py-2">
+                                <small><i class="bi bi-gear"></i> Comandos y Configuración</small>
+                            </div>
+                            <div class="card-body p-2">
+                                <!-- Selector de Modo Motor -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label small"><i class="bi bi-gear"></i> Modo Motor</label>
+                                        <select class="form-select form-select-sm" id="motorMode" onchange="setMotorMode()">
+                                            <option value="0">0 - Normal</option>
+                                            <option value="1">1 - High Speed</option>
+                                            <option value="2">2 - Precision</option>
+                                        </select>
+                                        <small class="text-muted">CONFIG SET MOTORMODE &lt;0|1|2&gt;</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Comandos Básicos -->
+                                <div class="row g-1 mb-2">
+                                    <div class="col-3">
+                                        <button class="btn btn-info btn-sm w-100" onclick="sendGripperCmd('HELP')" title="Mostrar ayuda">
+                                            <i class="bi bi-question-circle"></i> HELP
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-success btn-sm w-100" onclick="sendGripperCmd('MOVE GRIP HOME')" title="Homing">
+                                            <i class="bi bi-house"></i> HOME
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG STALL STINFO')" title="Toggle telemetría">
+                                            <i class="bi bi-activity"></i> STALL
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('CONFIG SAVE')" title="Guardar config">
+                                            <i class="bi bi-save"></i> SAVE
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Comandos con Inputs -->
+                                <div class="row g-1 mb-2">
+                                    <div class="col-4">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="stepInput" placeholder="Pasos" title="Pasos">
+                                            <button class="btn btn-outline-primary btn-sm" onclick="moveSteps()" title="Mover pasos">
+                                                STEPS
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="distInput" placeholder="mm" step="0.1">
+                                            <button class="btn btn-outline-success btn-sm" onclick="moveDist()" title="Distancia mm">
+                                                DIST
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="forceInput" placeholder="N" step="0.1">
+                                            <button class="btn btn-outline-warning btn-sm" onclick="setTargetForce()" title="Fuerza objetivo">
+                                                FORCE
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Lecturas y Comandos Avanzados -->
+                                <div class="row g-1">
+                                    <div class="col-2">
+                                        <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP STpos')" title="Posición stepper">
+                                            <small>STpos</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-2">
+                                        <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP MMpos')" title="Posición mm">
+                                            <small>MMpos</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-2">
+                                        <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP ForceNf')" title="Fuerza N">
+                                            <small>Force</small>
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('DO FORCE CAL')" title="Calibrar fuerza">
+                                            <i class="bi bi-tools"></i> CAL
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-danger btn-sm w-100" onclick="sendGripperCmd('DO GRIP REBOOT')" title="Reboot">
+                                            <i class="bi bi-arrow-clockwise"></i> REBOOT
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terminal RAW -->
+                        <div class="card mt-2">
+                            <div class="card-header py-1">
+                                <small><i class="bi bi-keyboard"></i> Terminal RAW</small>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="input-group">
+                                    <input type="text" class="form-control form-control-sm" id="manualCommand" 
+                                           placeholder="Comando manual (Enter=enviar, Ctrl+Enter=RAW, ↑↓=historial)" 
+                                           onkeypress="handleCommandKeyPress(event)"
+                                           autocomplete="off">
+                                    <button class="btn btn-primary btn-sm" onclick="sendManualCommand()" title="Enviar comando">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="sendRawCommand()" title="Enviar RAW">
+                                        <i class="bi bi-terminal"></i>
+                                    </button>
+                                </div>
+                                <div id="commandHistory" class="mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rutinas Preestablecidas -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-play-circle"></i> Rutinas Preestablecidas
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="program-item" onclick="runProgram(1)">
+                                    <i class="bi bi-play-circle"></i> Rutina de Calibración
+                                </div>
+                                <div class="program-item" onclick="runProgram(2)">
+                                    <i class="bi bi-arrow-repeat"></i> Ciclo de Prueba
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="program-item" onclick="runProgram(3)">
+                                    <i class="bi bi-house"></i> Posición Inicial
+                                </div>
+                                <div class="program-item" onclick="runProgram(4)">
+                                    <i class="bi bi-shield-check"></i> Rutina Seguridad
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel de Estado, Cámara y Simulación -->
-            <div class="col-lg-6">
-                <div class="row">
-                    <!-- Estado del Sistema -->
-                    <div class="col-12 mb-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-info-circle"></i> Estado del Sistema
+            <!-- COLUMNA DERECHA - ESTADOS Y CONSOLAS -->
+            <div class="col-lg-6 mb-4">
+                <!-- Estado del Sistema -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-info-circle"></i> Estado del Sistema
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-4">
+                                <h6>Robot UR5e</h6>
+                                <p class="mb-1">Estado: <span id="robotStatus" class="status-disconnected">Desconectado</span></p>
+                                <p class="mb-0">IP: {{ app_state.get('robot_ip', 'N/A') }}</p>
                             </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-4">
-                                        <h6>Robot UR5e</h6>
-                                        <p class="mb-1">Estado: <span id="robotStatus" class="status-disconnected">Desconectado</span></p>
-                                        <p class="mb-0">IP: {{ app_state.get('robot_ip', 'N/A') }}</p>
-                                    </div>
-                                    <div class="col-4">
-                                        <h6>Xbox Controller</h6>
-                                        <p class="mb-1">Conexión: <span id="xboxStatus" class="status-disconnected">Desconectado</span></p>
-                                        <p class="mb-0">Modo: <span id="controlMode">Coordenadas</span></p>
-                                    </div>
-                                    <div class="col-4">
-                                        <h6>Gripper Serie</h6>
-                                        <p class="mb-1">Estado: <span id="serialStatus" class="status-disconnected">Desconectado</span></p>
-                                        <p class="mb-0">Puerto: <span id="serialPort">Auto-detect</span></p>
-                                    </div>
+                            <div class="col-4">
+                                <h6>Xbox Controller</h6>
+                                <p class="mb-1">Conexión: <span id="xboxStatus" class="status-disconnected">Desconectado</span></p>
+                                <p class="mb-0">Modo: <span id="controlMode">Coordenadas</span></p>
+                            </div>
+                            <div class="col-4">
+                                <h6>Gripper Serie</h6>
+                                <p class="mb-1">Estado: <span id="serialStatus" class="status-connected">Conectado</span></p>
+                                <p class="mb-0">IP: <span id="serialPort">192.168.1.100:502</span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="position-display mt-3">
+                            <h6>Posición Actual del Robot</h6>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <small>X: <span id="currentX">0.0</span> mm</small>
                                 </div>
-                                
-                                <div class="position-display mt-3">
-                                    <h6>Posición Actual del Robot</h6>
-                                    <div class="row g-2">
-                                        <div class="col-4">
-                                            <small>X: <span id="currentX">0.0</span> mm</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <small>Y: <span id="currentY">0.0</span> mm</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <small>Z: <span id="currentZ">0.0</span> mm</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <small>RX: <span id="currentRX">0.0</span>°</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <small>RY: <span id="currentRY">0.0</span>°</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <small>RZ: <span id="currentRZ">0.0</span>°</small>
-                                        </div>
-                                    </div>
+                                <div class="col-4">
+                                    <small>Y: <span id="currentY">0.0</span> mm</small>
+                                </div>
+                                <div class="col-4">
+                                    <small>Z: <span id="currentZ">0.0</span> mm</small>
+                                </div>
+                                <div class="col-4">
+                                    <small>RX: <span id="currentRX">0.0</span>°</small>
+                                </div>
+                                <div class="col-4">
+                                    <small>RY: <span id="currentRY">0.0</span>°</small>
+                                </div>
+                                <div class="col-4">
+                                    <small>RZ: <span id="currentRZ">0.0</span>°</small>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
+                <!-- Cámara Web y URRTDE -->
+                <div class="row mb-3">
                     <!-- Cámara Web -->
-                    <div class="col-6 mb-4">
-                        <div class="card">
+                    <div class="col-6">
+                        <div class="card webcam-container">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-camera-video"></i> Cámara Web POV del Robot</span>
                                 <div>
-                                    <button class="btn btn-sm btn-outline-light me-1" onclick="startWebcam()">
-                                        <i class="bi bi-play"></i>
+                                    <span><i class="bi bi-camera-video"></i> Cámara Web</span>
+                                    <span id="webcamStatus" class="badge bg-secondary ms-2">Inactiva</span>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-success me-1" id="startWebcam">
+                                        <i class="bi bi-play-fill"></i> Iniciar
                                     </button>
-                                    <button class="btn btn-sm btn-outline-light me-1" onclick="stopWebcam()">
-                                        <i class="bi bi-stop"></i>
+                                    <button class="btn btn-sm btn-danger me-1" id="stopWebcam" disabled>
+                                        <i class="bi bi-stop-fill"></i> Detener
                                     </button>
-                                    <button class="btn btn-sm btn-outline-light" onclick="capturePhoto()">
-                                        <i class="bi bi-camera"></i>
+                                    <button class="btn btn-sm btn-warning me-1" id="switchCamera">
+                                        <i class="bi bi-arrow-repeat"></i> Cambiar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-light" id="capturePhoto" disabled>
+                                        <i class="bi bi-camera"></i> Capturar
                                     </button>
                                 </div>
                             </div>
                             <div class="card-body p-2">
-                                <div class="webcam-container" id="webcamContainer">
-                                    <div class="text-center" id="webcamPlaceholder">
-                                        <i class="bi bi-camera-video-off" style="font-size: 2rem;"></i>
-                                        <p class="mt-2 mb-0">Cámara Desconectada</p>
-                                        <small>Presiona <i class="bi bi-play"></i> para iniciar</small>
+                                <div style="height: 200px; background: #000; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative;">
+                                    <img id="webcamStream" src="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 5px; display: none;" alt="Webcam Stream">
+                                    <div id="webcamPlaceholder" style="color: #666; text-align: center;">
+                                        <i class="bi bi-camera-video" style="font-size: 2rem;"></i>
+                                        <p class="mt-2 mb-0">Cámara Inactiva</p>
+                                        <small>Presiona "Iniciar" para comenzar</small>
                                     </div>
-                                    <img id="webcamStream" class="webcam-stream" style="display: none; width: 100%; height: auto;" alt="Stream de la webcam">
                                 </div>
-                                <div class="mt-2">
-                                    <span class="badge bg-secondary" id="webcamStatus">Desconectada</span>
-                                </div>
+                                <div id="webcamMessages" class="mt-2"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-6 mb-4">
+                    <!-- Estado URRTDE -->
+                    <div class="col-6">
                         <div class="card">
                             <div class="card-header">
-                                <i class="bi bi-info-circle"></i> Estado de URRTDE
+                                <i class="bi bi-info-circle"></i> URRTDE
                             </div>
                             <div class="card-body p-2">
-                                <div class="simulation-container" id="urrtdeContainer">
+                                <div class="simulation-container" id="urrtdeContainer" style="height: 200px;">
                                     <div class="text-center" id="urrtdePlaceholder">
-                                        <i class="bi bi-robot" style="font-size: 2rem;"></i>
-                                        <p class="mt-2 mb-0">URRTDE</p>
-                                        <small>Modo Desconectado</small>
+                                        <i class="bi bi-robot" style="font-size: 1.5rem;"></i>
+                                        <p class="mt-2 mb-0 small">URRTDE</p>
+                                        <small>Desconectado</small>
                                         <br><br>
                                         <div class="badge bg-warning">Robot No Disponible</div>
                                     </div>
@@ -705,40 +1327,38 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    
-
+                <!-- Consolas -->
+                <div class="row">
                     <!-- Consola del Gripper -->
-                    <div class="col-12 mb-4">
+                    <div class="col-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-wrench-adjustable"></i> Consola Gripper uSENSE</span>
-                                <div>
-                                    <span class="badge me-2" id="gripperConnectionBadge">Desconectado</span>
-                                    <button class="btn btn-sm btn-outline-light" onclick="clearGripperConsole()">
-                                        <i class="bi bi-trash"></i> Limpiar
-                                    </button>
-                                </div>
+                                <span><i class="bi bi-wrench-adjustable"></i> Gripper <span class="badge bg-success ms-2">192.168.1.100:502</span></span>
+                                <button class="btn btn-sm btn-outline-light" onclick="clearGripperConsole()">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                             <div class="card-body p-0">
-                                <div id="gripperConsole" class="console-log" style="height: 150px;">
-                                    <span class="text-info">Consola del Gripper uSENSEGRIP - Comandos y respuestas aparecerán aquí</span>
+                                <div id="gripperConsole" class="console-log" style="height: 300px;">
+                                    <span class="text-info">🔍 Monitor del Gripper - Respuestas en tiempo real</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Consola de Sistema -->
-                    <div class="col-12">
+                    <div class="col-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-terminal"></i> Consola de Sistema</span>
+                                <span><i class="bi bi-terminal"></i> Sistema</span>
                                 <button class="btn btn-sm btn-outline-light" onclick="clearLog()">
-                                    <i class="bi bi-trash"></i> Limpiar
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </div>
                             <div class="card-body p-0">
-                                <div id="consoleLog" class="console-log">
+                                <div id="consoleLog" class="console-log" style="height: 300px;">
                                     <!-- Los logs se cargarán aquí dinámicamente -->
                                 </div>
                             </div>
@@ -750,879 +1370,34 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <!-- Scripts separados para modularidad -->
+    <script src="/static/js/webcam.js"></script>
+    <script src="/static/js/gripper.js"></script>
+    <script src="/static/js/robot.js"></script>
     <script>
-        // Variables globales
+        // Script principal simplificado - La funcionalidad está en módulos separados
+        // Variables globales mínimas
         let socket;
-        let isXboxMode = false;
-        let savedPositions = {};
-        let currentPosition = { x: 300, y: -200, z: 500, rx: 0, ry: 0, rz: 0 };
         
-        // Inicialización
+        // Inicialización principal
         document.addEventListener('DOMContentLoaded', function() {
-            initializeWebSocket();
-            updateSliderValues();
-            updateCurrentPositionDisplay();
-            initializeGripperInterface();
-            addLogMessage('Sistema web inicializado', 'info');
-        });
-
-        // Inicializar interfaz del gripper
-        function initializeGripperInterface() {
-            // Cargar historial de comandos del localStorage
-            const savedHistory = localStorage.getItem('gripperCommandHistory');
-            if (savedHistory) {
-                try {
-                    commandHistory = JSON.parse(savedHistory);
-                    updateCommandHistory();
-                } catch (e) {
-                    console.warn('Error cargando historial de comandos:', e);
-                }
-            }
-            
-            // Validación en tiempo real del input manual
-            const manualInput = document.getElementById('manualCommand');
-            manualInput.addEventListener('input', validateCommand);
-            
-            addGripperMessage('Interfaz del Gripper uSENSEGRIP lista', 'info');
-        }
-
-        // Validar comando en tiempo real
-        function validateCommand() {
-            const input = document.getElementById('manualCommand');
-            const command = input.value.trim().toUpperCase();
-            
-            // Lista de comandos válidos
-            const validCommands = [
-                'HELP',
-                'CONFIG STALL STINFO',
-                'CONFIG STALL DIAG', 
-                'CONFIG HOMING ONBOOT',
-                'CONFIG SET MOTORMODE',
-                'CONFIG SAVE',
-                'MOVE GRIP HOME',
-                'MOVE GRIP STEPS',
-                'MOVE GRIP DIST',
-                'MOVE GRIP TFORCE',
-                'GET GRIP USTEP',
-                'GET GRIP STPOS',
-                'GET GRIP MMPOS',
-                'GET GRIP FORCENF',
-                'GET GRIP FORCEGF',
-                'GET GRIP DISTOBJ',
-                'DO FORCE CAL',
-                'DO GRIP REBOOT'
-            ];
-            
-            let isValid = false;
-            
-            // Verificar si el comando es válido
-            for (let validCmd of validCommands) {
-                if (command === validCmd || command.startsWith(validCmd + ' ')) {
-                    isValid = true;
-                    break;
-                }
-            }
-            
-            // Aplicar estilo visual
-            if (command === '') {
-                input.style.borderColor = '';
-                input.style.backgroundColor = '';
-            } else if (isValid) {
-                input.style.borderColor = '#28a745';
-                input.style.backgroundColor = '#f8fff8';
-            } else {
-                input.style.borderColor = '#dc3545';
-                input.style.backgroundColor = '#fff8f8';
-            }
-            
-            // Habilitar/deshabilitar botón
-            const sendBtn = document.getElementById('sendManualBtn');
-            sendBtn.disabled = !isValid && command !== '';
-        }
-
-        // Inicializar WebSocket
-        function initializeWebSocket() {
+            // Inicializar Socket.IO global
             socket = io();
             
-            socket.on('connect', function() {
-                addLogMessage('Conexión WebSocket establecida', 'info');
-                updateConnectionStatus(true);
-                socket.emit('request_status');
-            });
+            // Los controladores modulares se inicializan automáticamente
+            console.log('✅ Sistema inicializado - Módulos cargados');
             
-            socket.on('disconnect', function() {
-                addLogMessage('Conexión WebSocket perdida', 'warning');
-                updateConnectionStatus(false);
-            });
-            
-            socket.on('status_update', function(data) {
-                updateSystemStatus(data);
-            });
-            
-            socket.on('robot_status_update', function(data) {
-                updateRobotStatus(data);
-            });
-            
-            socket.on('new_log', function(logEntry) {
-                displayLogEntry(logEntry);
-            });
-            
-            // Eventos específicos del gripper
-            socket.on('gripper_response', function(data) {
-                addGripperMessage(data.response, 'response', true);
-            });
-            
-            socket.on('gripper_status', function(data) {
-                updateGripperStatus(data);
-            });
-        }
-
-        // Actualizar estado de conexión
-        function updateConnectionStatus(connected) {
-            const icon = document.getElementById('connectionIcon');
-            const status = document.getElementById('connectionStatus');
-            
-            if (connected) {
-                icon.className = 'bi bi-wifi';
-                status.textContent = 'Conectado';
-            } else {
-                icon.className = 'bi bi-wifi-off';
-                status.textContent = 'Desconectado';
-            }
-        }
-
-        // Actualizar estado del sistema
-        function updateSystemStatus(data) {
-            // Actualizar estado del robot
-            const robotStatus = document.getElementById('robotStatus');
-            if (data.robot_connected) {
-                robotStatus.textContent = 'Conectado';
-                robotStatus.className = 'status-connected';
-            } else {
-                robotStatus.textContent = 'Desconectado';
-                robotStatus.className = 'status-disconnected';
-            }
-            
-            // Actualizar estado Xbox
-            const xboxStatus = document.getElementById('xboxStatus');
-            if (data.xbox_connected) {
-                xboxStatus.textContent = 'Conectado';
-                xboxStatus.className = 'status-connected';
-            } else {
-                xboxStatus.textContent = 'Desconectado';
-                xboxStatus.className = 'status-disconnected';
-            }
-            
-            // Actualizar estado Serie
-            const serialStatus = document.getElementById('serialStatus');
-            const gripperBadge = document.getElementById('gripperConnectionBadge');
-            
-            if (data.serial_connected) {
-                serialStatus.textContent = 'Conectado';
-                serialStatus.className = 'status-connected';
-                gripperBadge.textContent = 'Conectado';
-                gripperBadge.className = 'badge bg-success me-2';
-            } else {
-                serialStatus.textContent = 'Desconectado';
-                serialStatus.className = 'status-disconnected';
-                gripperBadge.textContent = 'Desconectado';
-                gripperBadge.className = 'badge bg-danger me-2';
-            }
-            
-            // Actualizar puerto serie si está disponible
-            if (data.serial_port) {
-                document.getElementById('serialPort').textContent = data.serial_port;
-            }
-            
-            // Actualizar posición actual
-            if (data.current_position) {
-                currentPosition = {
-                    x: data.current_position[0] || 300,
-                    y: data.current_position[1] || -200,
-                    z: data.current_position[2] || 500,
-                    rx: data.current_position[3] || 0,
-                    ry: data.current_position[4] || 0,
-                    rz: data.current_position[5] || 0
-                };
-                updateCurrentPositionDisplay();
-            }
-            
-            // Actualizar posiciones guardadas
-            if (data.saved_positions) {
-                savedPositions = data.saved_positions;
-            }
-        }
-
-        // Actualizar estado del robot
-        function updateRobotStatus(data) {
-            if (data.position) {
-                currentPosition = {
-                    x: data.position[0] || 300,
-                    y: data.position[1] || -200,
-                    z: data.position[2] || 500,
-                    rx: data.position[3] || 0,
-                    ry: data.position[4] || 0,
-                    rz: data.position[5] || 0
-                };
-                updateCurrentPositionDisplay();
-            }
-        }
-
-        // Actualizar display de posición actual
-        function updateCurrentPositionDisplay() {
-            document.getElementById('currentX').textContent = currentPosition.x.toFixed(1);
-            document.getElementById('currentY').textContent = currentPosition.y.toFixed(1);
-            document.getElementById('currentZ').textContent = currentPosition.z.toFixed(1);
-            document.getElementById('currentRX').textContent = currentPosition.rx.toFixed(1);
-            document.getElementById('currentRY').textContent = currentPosition.ry.toFixed(1);
-            document.getElementById('currentRZ').textContent = currentPosition.rz.toFixed(1);
-        }
-
-        // Agregar mensaje al log
-        function addLogMessage(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            displayLogEntry({
-                timestamp: timestamp,
-                message: message,
-                type: type
-            });
-        }
-
-        // Mostrar entrada de log
-        function displayLogEntry(logEntry) {
-            const console = document.getElementById('consoleLog');
-            const logDiv = document.createElement('div');
-            logDiv.className = 'log-entry';
-            
-            let className = 'log-info';
-            switch(logEntry.type) {
-                case 'action': className = 'log-action'; break;
-                case 'warning': className = 'log-warning'; break;
-                case 'error': className = 'log-error'; break;
-            }
-            
-            logDiv.innerHTML = `<span class="log-timestamp">[${logEntry.timestamp}]</span> <span class="${className}">${logEntry.message}</span>`;
-            console.appendChild(logDiv);
-            console.scrollTop = console.scrollHeight;
-        }
-
-        // Limpiar log
-        function clearLog() {
-            fetch('/api/logs/clear', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('consoleLog').innerHTML = '';
+            // Log inicial
+            setTimeout(() => {
+                if (window.addLogMessage) {
+                    window.addLogMessage('🚀 Sistema web inicializado correctamente', 'info');
                 }
-            });
-        }
-
-        // Variables globales para gripper
-        let commandHistory = [];
-        let historyIndex = -1;
-
-        // Actualizar valores de sliders
-        function updateSliderValues() {
-            const forceSlider = document.getElementById('gripperForce');
-            const distanceSlider = document.getElementById('gripperDistance');
+            }, 500);
             
-            forceSlider.addEventListener('input', function() {
-                document.getElementById('forceValue').textContent = parseFloat(this.value).toFixed(1);
-            });
-
-            distanceSlider.addEventListener('input', function() {
-                document.getElementById('distanceValue').textContent = parseFloat(this.value).toFixed(1);
-            });
-        }
-
-        // Mover robot a coordenadas
-        function moveToCoordinates() {
-            const coords = {
-                x: parseFloat(document.getElementById('coordX').value) || 0,
-                y: parseFloat(document.getElementById('coordY').value) || 0,
-                z: parseFloat(document.getElementById('coordZ').value) || 0,
-                rx: parseFloat(document.getElementById('coordRX').value) || 0,
-                ry: parseFloat(document.getElementById('coordRY').value) || 0,
-                rz: parseFloat(document.getElementById('coordRZ').value) || 0
-            };
-
-            const button = document.getElementById('moveBtn');
-            button.disabled = true;
-            button.innerHTML = '<span class="loading-spinner"></span>Moviendo...';
-
-            fetch('/api/robot/move', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(coords)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLogMessage('Comando de movimiento registrado', 'action');
-                } else {
-                    addLogMessage(`Error en movimiento: ${data.message}`, 'error');
-                }
-            })
-            .catch(error => {
-                addLogMessage(`Error de conexión: ${error}`, 'error');
-            })
-            .finally(() => {
-                button.disabled = false;
-                button.innerHTML = '<i class="bi bi-arrow-right-circle"></i> Mover Robot';
-            });
-        }
-
-
-
-        // Ir a Home
-        function goHome() {
-            fetch('/api/robot/home', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLogMessage('Robot movido a posición home', 'action');
-                } else {
-                    addLogMessage(`Error yendo a home: ${data.message}`, 'error');
-                }
-            })
-            .catch(error => {
-                addLogMessage(`Error: ${error}`, 'error');
-            });
-        }
-
-        // Guardar posición
-        function savePosition() {
-            const name = document.getElementById('positionName').value;
-            if (!name) {
-                addLogMessage('Error: Nombre de posición requerido', 'error');
-                return;
-            }
-
-            fetch('/api/positions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name: name })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLogMessage(`Posición "${name}" guardada`, 'action');
-                    document.getElementById('positionName').value = '';
-                } else {
-                    addLogMessage(`Error: ${data.message}`, 'error');
-                }
-            });
-        }
-
-        // Cargar posición
-        function loadPosition() {
-            const name = document.getElementById('positionName').value;
-            if (!name) {
-                addLogMessage('Error: Especifica un nombre de posición', 'error');
-                return;
-            }
-
-            if (savedPositions[name]) {
-                const pos = savedPositions[name].coordinates;
-                document.getElementById('coordX').value = pos[0];
-                document.getElementById('coordY').value = pos[1];
-                document.getElementById('coordZ').value = pos[2];
-                document.getElementById('coordRX').value = pos[3];
-                document.getElementById('coordRY').value = pos[4];
-                document.getElementById('coordRZ').value = pos[5];
-                addLogMessage(`Posición "${name}" cargada`, 'action');
-            } else {
-                addLogMessage(`Posición "${name}" no encontrada`, 'error');
-            }
-        }
-
-        // Listar posiciones
-        function listPositions() {
-            fetch('/api/positions')
-            .then(response => response.json())
-            .then(positions => {
-                const names = Object.keys(positions);
-                if (names.length > 0) {
-                    addLogMessage(`Posiciones guardadas: ${names.join(', ')}`, 'info');
-                    alert('Posiciones guardadas:\\n' + names.map(name => 
-                        `${name}: (${positions[name].coordinates.slice(0,3).join(', ')})`
-                    ).join('\\n'));
-                } else {
-                    addLogMessage('No hay posiciones guardadas', 'info');
-                    alert('No hay posiciones guardadas');
-                }
-                savedPositions = positions;
-            });
-        }
-
-        // ==================== FUNCIONES DEL GRIPPER uSENSE ====================
-
-        // Agregar mensaje a la consola del gripper
-        function addGripperMessage(message, type = 'info', isResponse = false) {
-            const console = document.getElementById('gripperConsole');
-            const timestamp = new Date().toLocaleTimeString();
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'gripper-log-entry';
-            
-            let className = 'text-info';
-            let prefix = '→';
-            
-            if (isResponse) {
-                prefix = '←';
-                className = 'text-success';
-            }
-            
-            switch(type) {
-                case 'command': className = 'text-primary'; break;
-                case 'response': className = 'text-success'; break;
-                case 'error': className = 'text-danger'; break;
-                case 'warning': className = 'text-warning'; break;
-            }
-            
-            messageDiv.innerHTML = `<span class="text-muted">[${timestamp}]</span> <span class="text-secondary">${prefix}</span> <span class="${className}">${message}</span>`;
-            console.appendChild(messageDiv);
-            console.scrollTop = console.scrollHeight;
-            
-            // Mantener solo los últimos 50 mensajes
-            while (console.children.length > 50) {
-                console.removeChild(console.firstChild);
-            }
-        }
-
-        // Limpiar consola del gripper
-        function clearGripperConsole() {
-            document.getElementById('gripperConsole').innerHTML = 
-                '<span class="text-info">Consola limpiada - Comandos y respuestas aparecerán aquí</span>';
-        }
-
-        // Enviar comando específico del gripper
-        function sendGripperCmd(command) {
-            addGripperMessage(command, 'command');
-            
-            fetch('/api/gripper/command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ command: command })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.response && data.response !== 'Sin respuesta') {
-                        addGripperMessage(data.response, 'response', true);
-                    } else {
-                        addGripperMessage('Comando enviado exitosamente', 'response', true);
-                    }
-                } else {
-                    addGripperMessage(`Error: ${data.message}`, 'error', true);
-                }
-                
-                addLogMessage(`Comando gripper: ${command}`, 'action');
-            })
-            .catch(error => {
-                addGripperMessage(`Error de conexión: ${error}`, 'error', true);
-                addLogMessage(`Error comando gripper: ${error}`, 'error');
-            });
-        }
-
-        // Control básico del gripper
-        function sendGripperBasic() {
-            const force = parseFloat(document.getElementById('gripperForce').value);
-            const distance = parseFloat(document.getElementById('gripperDistance').value);
-
-            fetch('/api/gripper/control', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    force: force,
-                    distance: distance
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addGripperMessage(`Control: Fuerza=${force}N, Distancia=${distance}mm`, 'command');
-                    addLogMessage(`Gripper: Fuerza=${force}N, Distancia=${distance}mm`, 'action');
-                } else {
-                    addGripperMessage(`Error: ${data.message}`, 'error', true);
-                    addLogMessage(`Error gripper: ${data.message}`, 'error');
-                }
-            });
-        }
-
-        function homeGripper() {
-            sendGripperCmd('MOVE GRIP HOME');
-        }
-
-        function openGripper() {
-            document.getElementById('gripperDistance').value = 100;
-            document.getElementById('distanceValue').textContent = '100.0';
-            sendGripperCmd('MOVE GRIP DIST 100.0');
-        }
-
-        function closeGripper() {
-            document.getElementById('gripperDistance').value = 0;
-            document.getElementById('distanceValue').textContent = '0.0';
-            sendGripperCmd('MOVE GRIP DIST 0.0');
-        }
-
-        // Funciones para comandos específicos con parámetros
-        function moveSteps() {
-            const steps = document.getElementById('stepInput').value;
-            if (!steps) {
-                addGripperMessage('Error: Especifica número de pasos', 'error', true);
-                return;
-            }
-            sendGripperCmd(`MOVE GRIP STEPS ${steps}`);
-        }
-
-        function moveDist() {
-            const dist = document.getElementById('distInput').value;
-            if (!dist) {
-                addGripperMessage('Error: Especifica distancia en mm', 'error', true);
-                return;
-            }
-            sendGripperCmd(`MOVE GRIP DIST ${dist}`);
-        }
-
-        function setTargetForce() {
-            const force = document.getElementById('forceInput').value;
-            if (!force) {
-                addGripperMessage('Error: Especifica fuerza en N', 'error', true);
-                return;
-            }
-            sendGripperCmd(`MOVE GRIP TFORCE ${force}`);
-        }
-
-        function setMotorMode() {
-            const mode = document.getElementById('motorModeSelect').value;
-            if (mode === '') return;
-            
-            const modeNames = {'0': 'Normal', '1': 'High Speed', '2': 'Precision'};
-            sendGripperCmd(`CONFIG SET MOTORMODE ${mode}`);
-            addGripperMessage(`Configurando modo: ${modeNames[mode]}`, 'info');
-        }
-
-        // Comando manual con historial
-        function sendManualCommand() {
-            const commandInput = document.getElementById('manualCommand');
-            const command = commandInput.value.trim();
-            
-            if (!command) {
-                addGripperMessage('Error: Comando vacío', 'error', true);
-                return;
-            }
-
-            // Agregar al historial
-            if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== command) {
-                commandHistory.push(command);
-                // Mantener solo los últimos 20 comandos
-                if (commandHistory.length > 20) {
-                    commandHistory.shift();
-                }
-                updateCommandHistory();
-            }
-
-            // Limpiar input
-            commandInput.value = '';
-            historyIndex = -1;
-
-            // Enviar comando
-            sendGripperCmd(command);
-        }
-
-        function handleCommandKeyPress(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                sendManualCommand();
-            } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                navigateHistory(-1);
-            } else if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                navigateHistory(1);
-            }
-        }
-
-        function navigateHistory(direction) {
-            if (commandHistory.length === 0) return;
-            
-            historyIndex += direction;
-            
-            if (historyIndex < -1) {
-                historyIndex = -1;
-            } else if (historyIndex >= commandHistory.length) {
-                historyIndex = commandHistory.length - 1;
-            }
-            
-            const commandInput = document.getElementById('manualCommand');
-            
-            if (historyIndex === -1) {
-                commandInput.value = '';
-            } else {
-                commandInput.value = commandHistory[historyIndex];
-            }
-        }
-
-        function updateCommandHistory() {
-            const historyDiv = document.getElementById('commandHistory');
-            historyDiv.innerHTML = '';
-            
-            // Mostrar últimos 3 comandos
-            const recentCommands = commandHistory.slice(-3).reverse();
-            
-            recentCommands.forEach((cmd, index) => {
-                const cmdSpan = document.createElement('span');
-                cmdSpan.className = 'badge bg-secondary me-1 mb-1 cursor-pointer';
-                cmdSpan.style.cursor = 'pointer';
-                cmdSpan.textContent = cmd.length > 20 ? cmd.substring(0, 20) + '...' : cmd;
-                cmdSpan.title = cmd;
-                
-                cmdSpan.onclick = function() {
-                    const input = document.getElementById('manualCommand');
-                    input.value = cmd;
-                    validateCommand(); // Validar al cargar comando
-                };
-                
-                historyDiv.appendChild(cmdSpan);
-            });
-            
-            // Guardar historial en localStorage
-            try {
-                localStorage.setItem('gripperCommandHistory', JSON.stringify(commandHistory));
-            } catch (e) {
-                console.warn('Error guardando historial de comandos:', e);
-            }
-        }
-
-        // Eventos WebSocket específicos del gripper
-        function initializeGripperWebSocket() {
-            // Escuchar respuestas del gripper en tiempo real
-            socket.on('gripper_response', function(data) {
-                addGripperMessage(data.response, 'response', true);
-            });
-            
-            socket.on('gripper_status', function(data) {
-                updateGripperStatus(data);
-            });
-        }
-
-        function updateGripperStatus(data) {
-            // Actualizar badge de conexión
-            const badge = document.getElementById('gripperConnectionBadge');
-            if (data.connected) {
-                badge.textContent = `Conectado (${data.port || 'N/A'})`;
-                badge.className = 'badge bg-success me-2';
-            } else {
-                badge.textContent = 'Desconectado';
-                badge.className = 'badge bg-danger me-2';
-            }
-        }
-
-        // Función auxiliar para mostrar ayuda de comandos
-        function showCommandHelp() {
-            const helpText = `
-Comandos disponibles para uSENSEGRIP:
-
-HELP - Mostrar ayuda del dispositivo
-CONFIG STALL STINFO - Toggle telemetría StallGuard
-CONFIG HOMING ONBOOT - Toggle homing automático
-CONFIG SET MOTORMODE <0|1|2> - Modo motor (Normal/HS/Precision)
-CONFIG SAVE - Guardar configuración
-
-MOVE GRIP HOME - Ejecutar homing completo
-MOVE GRIP STEPS <int> - Mover pasos relativos
-MOVE GRIP DIST <float> - Mover a distancia absoluta (mm)
-MOVE GRIP TFORCE <float> - Establecer fuerza objetivo (N)
-
-GET GRIP uSTEP - Configuración micropasos
-GET GRIP STpos - Posición stepper (pasos)
-GET GRIP MMpos - Posición en mm
-GET GRIP ForceNf - Fuerza actual (Newtons)
-GET GRIP ForceGf - Fuerza actual (gramos-fuerza)
-GET GRIP DISTobj - Distancia ToF al objeto (mm)
-
-DO FORCE CAL - Calibración interactiva de fuerza
-DO GRIP REBOOT - Reiniciar microcontrolador
-
-Ejemplos:
-MOVE GRIP DIST 25.5
-MOVE GRIP STEPS 100
-CONFIG SET MOTORMODE 1
-            `;
-            
-            addGripperMessage(helpText, 'info');
-        }
-
-        // Toggle modo de control
-        function toggleControlMode() {
-            const toggle = document.getElementById('controlToggle');
-            const modeText = document.getElementById('controlMode');
-            
-            isXboxMode = !isXboxMode;
-            
-            const mode = isXboxMode ? 'xbox' : 'coordinates';
-            
-            fetch('/api/control-mode', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ mode: mode })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (isXboxMode) {
-                        toggle.classList.add('active');
-                        modeText.textContent = 'Xbox Controller';
-                    } else {
-                        toggle.classList.remove('active');
-                        modeText.textContent = 'Coordenadas';
-                    }
-                    addLogMessage(`Modo cambiado a: ${mode}`, 'action');
-                }
-            });
-        }
-
-        // Ejecutar rutina
-        function runProgram(programNumber) {
-            const programs = {
-                1: 'Rutina de Calibración',
-                2: 'Ciclo de Prueba',
-                3: 'Posición Inicial',
-                4: 'Rutina de Seguridad'
-            };
-
-            const routineName = programs[programNumber];
-            
-            fetch(`/api/routines/${programNumber}`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLogMessage(`Iniciando: ${routineName}`, 'action');
-                } else {
-                    addLogMessage(`Error en rutina: ${data.message}`, 'error');
-                }
-            });
-        }
-
-        // ==================== FUNCIONES WEBCAM ====================
-        
-        let webcamActive = false;
-        
-        function startWebcam() {
-            fetch('/api/webcam/start', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    webcamActive = true;
-                    document.getElementById('webcamStream').src = '/video_feed';
-                    document.getElementById('webcamStream').style.display = 'block';
-                    document.getElementById('webcamPlaceholder').style.display = 'none';
-                    document.getElementById('webcamStatus').textContent = 'Conectada';
-                    document.getElementById('webcamStatus').className = 'badge bg-success';
-                    addLogMessage('Cámara web iniciada', 'info');
-                } else {
-                    addLogMessage(`Error iniciando cámara: ${data.message}`, 'error');
-                }
-            })
-            .catch(error => {
-                addLogMessage(`Error: ${error}`, 'error');
-            });
-        }
-        
-        function stopWebcam() {
-            fetch('/api/webcam/stop', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                webcamActive = false;
-                document.getElementById('webcamStream').style.display = 'none';
-                document.getElementById('webcamPlaceholder').style.display = 'block';
-                document.getElementById('webcamStatus').textContent = 'Desconectada';
-                document.getElementById('webcamStatus').className = 'badge bg-secondary';
-                addLogMessage('Cámara web detenida', 'info');
-            })
-            .catch(error => {
-                addLogMessage(`Error: ${error}`, 'error');
-            });
-        }
-        
-        function capturePhoto() {
-            if (!webcamActive) {
-                addLogMessage('La cámara debe estar activa para capturar fotos', 'warning');
-                return;
-            }
-            
-            fetch('/api/webcam/capture', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLogMessage(`Foto capturada: ${data.photo_url}`, 'success');
-                    // Opcional: mostrar la foto en un modal
-                } else {
-                    addLogMessage(`Error capturando foto: ${data.message}`, 'error');
-                }
-            })
-            .catch(error => {
-                addLogMessage(`Error: ${error}`, 'error');
-            });
-        }
-        
-        // Verificar estado de webcam periódicamente
-        function updateWebcamStatus() {
-            fetch('/api/webcam/status')
-            .then(response => response.json())
-            .then(data => {
-                const isActive = data.active && data.streaming;
-                if (isActive !== webcamActive) {
-                    webcamActive = isActive;
-                    if (isActive) {
-                        document.getElementById('webcamStream').src = '/video_feed';
-                        document.getElementById('webcamStream').style.display = 'block';
-                        document.getElementById('webcamPlaceholder').style.display = 'none';
-                        document.getElementById('webcamStatus').textContent = 'Conectada';
-                        document.getElementById('webcamStatus').className = 'badge bg-success';
-                    } else {
-                        document.getElementById('webcamStream').style.display = 'none';
-                        document.getElementById('webcamPlaceholder').style.display = 'block';
-                        document.getElementById('webcamStatus').textContent = 'Desconectada';
-                        document.getElementById('webcamStatus').className = 'badge bg-secondary';
-                    }
-                }
-            })
-            .catch(error => {
-                // Silenciar errores de verificación de estado
-            });
-        }
-
-        // Actualizar estado periódicamente
-        setInterval(() => {
-            if (socket && socket.connected) {
-                socket.emit('request_status');
-            }
-            updateWebcamStatus();
-        }, 5000); // Cada 5 segundos
+        });
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
