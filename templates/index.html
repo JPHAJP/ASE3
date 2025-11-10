@@ -1023,6 +1023,31 @@
             background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan)) !important;
         }
 
+        /* Estilos específicos para el input del gripper en estado del sistema */
+        #gripperIPInput {
+            font-size: 0.8rem !important;
+            border-radius: 0 8px 8px 0 !important;
+        }
+        
+        .input-group-text {
+            font-size: 0.8rem !important;
+            border-radius: 8px 0 0 8px !important;
+            background: var(--primary-blue) !important;
+            color: white !important;
+            border-color: var(--primary-blue) !important;
+        }
+        
+        [data-theme="dark"] .input-group-text {
+            background: var(--neon-blue) !important;
+            color: #000000 !important;
+            border-color: var(--neon-blue) !important;
+        }
+        
+        #gripperIPInput:focus {
+            border-color: var(--neon-blue) !important;
+            box-shadow: 0 0 0 0.1rem rgba(0, 212, 255, 0.25) !important;
+        }
+
         .loading-spinner {
             border: 2px solid #f3f3f3;
             border-top: 2px solid var(--primary-blue);
@@ -1207,45 +1232,6 @@
                         <span class="badge bg-secondary" id="gripperConnectionBadge">Desconectado</span>
                     </div>
                     <div class="card-body">
-                        <!-- Configuración de Conexión -->
-                        <div class="card mb-3">
-                            <div class="card-header py-2">
-                                <small><i class="bi bi-wifi"></i> Configuración de Conexión</small>
-                            </div>
-                            <div class="card-body py-2">
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <label for="gripperHost" class="form-label small">IP/Host del Gripper:</label>
-                                        <input type="text" class="form-control form-control-sm" id="gripperHost" placeholder="192.168.68.125">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="gripperPort" class="form-label small">Puerto:</label>
-                                        <input type="number" class="form-control form-control-sm" id="gripperPort" placeholder="23" min="1" max="65535">
-                                    </div>
-                                    <div class="col-md-3 d-flex align-items-end">
-                                        <button class="btn btn-primary btn-sm w-100" onclick="updateGripperConfig()">
-                                            <i class="bi bi-arrow-clockwise"></i> Actualizar
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="row mt-2">
-                                    <div class="col-md-6">
-                                        <button class="btn btn-success btn-sm" onclick="connectGripper()">
-                                            <i class="bi bi-plug"></i> Conectar
-                                        </button>
-                                        <button class="btn btn-warning btn-sm" onclick="disconnectGripper()">
-                                            <i class="bi bi-plug-fill"></i> Desconectar
-                                        </button>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <small class="text-muted" id="connectionStatus">
-                                            <i class="bi bi-info-circle"></i> Estado: Desconectado
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <!-- Botones y Inputs -->
                         <div class="card mt-2">
                             <div class="card-header py-2">
@@ -1261,15 +1247,19 @@
                                             <option value="1">1 - High Speed</option>
                                             <option value="2">2 - Precision</option>
                                         </select>
-                                        <small class="text-muted">CONFIG SET MOTORMODE &lt;0|1|2&gt;</small>
                                     </div>
                                 </div>
                                 
-                                <!-- Comandos Básicos -->
-                                <div class="row g-1 mb-2">
+                                <!-- Comandos de Conexión -->
+                                <div class="row g-1 mb-3">
                                     <div class="col-3">
-                                        <button class="btn btn-info btn-sm w-100" onclick="sendGripperCmd('HELP')" title="Mostrar ayuda">
-                                            <i class="bi bi-question-circle"></i> HELP
+                                        <button class="btn btn-success btn-sm w-100" onclick="connectGripper()" title="Conectar gripper">
+                                            <i class="bi bi-plug"></i> CONECTAR
+                                        </button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-warning btn-sm w-100" onclick="disconnectGripper()" title="Desconectar gripper">
+                                            <i class="bi bi-plug-fill"></i> DESCONECTAR
                                         </button>
                                     </div>
                                     <div class="col-3">
@@ -1278,20 +1268,15 @@
                                         </button>
                                     </div>
                                     <div class="col-3">
-                                        <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG STALL STINFO')" title="Toggle telemetría">
-                                            <i class="bi bi-activity"></i> STALL
-                                        </button>
-                                    </div>
-                                    <div class="col-3">
-                                        <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('CONFIG SAVE')" title="Guardar config">
-                                            <i class="bi bi-save"></i> SAVE
+                                        <button class="btn btn-info btn-sm w-100" onclick="sendGripperCmd('HELP')" title="Mostrar ayuda">
+                                            <i class="bi bi-question-circle"></i> HELP
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <!-- Comandos con Inputs -->
-                                <div class="row g-1 mb-2">
-                                    <div class="col-4">
+                                <!-- Comandos con Inputs - Todos en una línea -->
+                                <div class="row g-1 mb-3">
+                                    <div class="col-3">
                                         <div class="input-group input-group-sm">
                                             <input type="number" class="form-control" id="stepInput" placeholder="Pasos" title="Pasos">
                                             <button class="btn btn-outline-primary btn-sm" onclick="moveSteps()" title="Mover pasos">
@@ -1299,7 +1284,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-4">
+                                    <div class="col-3">
                                         <div class="input-group input-group-sm">
                                             <input type="number" class="form-control" id="distInput" placeholder="mm" step="0.1">
                                             <button class="btn btn-outline-success btn-sm" onclick="moveDist()" title="Distancia mm">
@@ -1307,7 +1292,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-4">
+                                    <div class="col-3">
                                         <div class="input-group input-group-sm">
                                             <input type="number" class="form-control" id="forceInput" placeholder="N" step="0.1">
                                             <button class="btn btn-outline-warning btn-sm" onclick="setTargetForce()" title="Fuerza objetivo">
@@ -1315,10 +1300,15 @@
                                             </button>
                                         </div>
                                     </div>
+                                    <div class="col-3">
+                                        <button class="btn btn-secondary btn-sm w-100" onclick="sendGripperCmd('CONFIG STALL STINFO')" title="Toggle telemetría">
+                                            <i class="bi bi-activity"></i> STALL
+                                        </button>
+                                    </div>
                                 </div>
                                 
-                                <!-- Lecturas y Comandos Avanzados -->
-                                <div class="row g-1">
+                                <!-- Comandos de Lectura -->
+                                <div class="row g-1 mb-2">
                                     <div class="col-2">
                                         <button class="btn btn-outline-info btn-sm w-100" onclick="sendGripperCmd('GET GRIP STpos')" title="Posición stepper">
                                             <small>STpos</small>
@@ -1334,12 +1324,17 @@
                                             <small>Force</small>
                                         </button>
                                     </div>
-                                    <div class="col-3">
+                                    <div class="col-2">
+                                        <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('CONFIG SAVE')" title="Guardar config">
+                                            <i class="bi bi-save"></i> SAVE
+                                        </button>
+                                    </div>
+                                    <div class="col-2">
                                         <button class="btn btn-warning btn-sm w-100" onclick="sendGripperCmd('DO FORCE CAL')" title="Calibrar fuerza">
                                             <i class="bi bi-tools"></i> CAL
                                         </button>
                                     </div>
-                                    <div class="col-3">
+                                    <div class="col-2">
                                         <button class="btn btn-danger btn-sm w-100" onclick="sendGripperCmd('DO GRIP REBOOT')" title="Reboot">
                                             <i class="bi bi-arrow-clockwise"></i> REBOOT
                                         </button>
@@ -1411,18 +1406,21 @@
                         <div class="row g-3">
                             <div class="col-4">
                                 <h6>Robot UR5e</h6>
-                                <p class="mb-1">Estado: <span id="robotStatus" class="status-disconnected">Desconectado</span></p>
                                 <p class="mb-0">IP: {{ app_state.get('robot_ip', 'N/A') }}</p>
                             </div>
                             <div class="col-4">
                                 <h6>Xbox Controller</h6>
-                                <p class="mb-1">Conexión: <span id="xboxStatus" class="status-disconnected">Desconectado</span></p>
                                 <p class="mb-0">Modo: <span id="controlMode">Coordenadas</span></p>
                             </div>
                             <div class="col-4">
-                                <h6>Gripper Serie</h6>
-                                <p class="mb-1">Estado: <span id="serialStatus" class="status-connected">Conectado</span></p>
-                                <p class="mb-0">IP: <span id="serialPort">192.168.1.100:502</span></p>
+                                <h6>Gripper</h6>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text small">IP:</span>
+                                    <input type="text" class="form-control form-control-sm" id="gripperIPInput" 
+                                           value="192.168.68.125:23" placeholder="IP:Puerto" 
+                                           onkeypress="handleGripperIPKeyPress(event)" 
+                                           onblur="updateGripperIPFromInput()" title="Formato: IP:Puerto">
+                                </div>
                             </div>
                         </div>
                         
@@ -1564,10 +1562,66 @@
         // Variables globales mínimas
         let socket;
         
+        // Funciones para manejar el input de IP del Gripper
+        function handleGripperIPKeyPress(event) {
+            if (event.key === 'Enter') {
+                updateGripperIPFromInput();
+                event.preventDefault();
+            }
+        }
+        
+        function updateGripperIPFromInput() {
+            const input = document.getElementById('gripperIPInput');
+            const ipPortValue = input.value.trim();
+            
+            if (!ipPortValue) {
+                console.warn('IP:Puerto no puede estar vacío');
+                return;
+            }
+            
+            // Separar IP y puerto del string
+            let host, port;
+            if (ipPortValue.includes(':')) {
+                const parts = ipPortValue.split(':');
+                host = parts[0].trim();
+                port = parseInt(parts[1].trim());
+                
+                if (isNaN(port) || port < 1 || port > 65535) {
+                    console.warn('Puerto inválido:', parts[1]);
+                    input.value = '192.168.68.125:23'; // Restaurar valor por defecto
+                    return;
+                }
+            } else {
+                console.warn('Formato inválido. Use IP:Puerto (ej: 192.168.68.125:23)');
+                input.value = '192.168.68.125:23'; // Restaurar valor por defecto
+                return;
+            }
+            
+            // Actualizar configuración del gripper via Socket.IO
+            if (socket) {
+                socket.emit('update_gripper_config', {
+                    host: host,
+                    port: port
+                });
+                console.log(`🔧 Actualizando configuración del gripper: ${host}:${port}`);
+                
+                if (window.addLogMessage) {
+                    window.addLogMessage(`🔧 Configuración del gripper actualizada: ${host}:${port}`, 'info');
+                }
+            }
+        }
+        
         // Inicialización principal
         document.addEventListener('DOMContentLoaded', function() {
             // Inicializar Socket.IO global
             socket = io();
+            
+            // Configurar listener para actualización de configuración del gripper
+            socket.on('update_gripper_config', function(data) {
+                if (window.updateGripperConfig) {
+                    window.updateGripperConfig(data.host, data.port);
+                }
+            });
             
             // Los controladores modulares se inicializan automáticamente
             console.log('✅ Sistema inicializado - Módulos cargados');

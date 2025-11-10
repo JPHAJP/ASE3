@@ -698,15 +698,24 @@ window.loadGripperConfig = async function() {
         const data = await response.json();
         
         if (data.success && data.connection_info) {
-            const hostInput = document.getElementById('gripperHost');
-            const portInput = document.getElementById('gripperPort');
-            const statusText = document.getElementById('connectionStatus');
+            const gripperInput = document.getElementById('gripperIPInput');
+            const gripperStatus = document.getElementById('gripperStatus');
             
-            if (hostInput) hostInput.value = data.connection_info.host || '';
-            if (portInput) portInput.value = data.connection_info.port || '';
+            if (gripperInput && data.connection_info.host && data.connection_info.port) {
+                gripperInput.value = `${data.connection_info.host}:${data.connection_info.port}`;
+            }
             
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-info-circle"></i> Configurado: ${data.connection_info.description}`;
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Configurado';
+                gripperStatus.className = 'status-connected';
+                
+                // Volver al estado desconectado después de un momento
+                setTimeout(() => {
+                    if (gripperStatus) {
+                        gripperStatus.textContent = 'Desconectado';
+                        gripperStatus.className = 'status-disconnected';
+                    }
+                }, 2000);
             }
             
             // Actualizar badges de conexión
@@ -717,35 +726,43 @@ window.loadGripperConfig = async function() {
     }
 };
 
-// Actualizar configuración del gripper
-window.updateGripperConfig = async function() {
-    const hostInput = document.getElementById('gripperHost');
-    const portInput = document.getElementById('gripperPort');
-    const statusText = document.getElementById('connectionStatus');
-    
-    if (!hostInput || !portInput) {
-        console.error('Campos de configuración no encontrados');
-        return;
+// Actualizar configuración del gripper desde el estado del sistema
+window.updateGripperConfig = async function(host = null, port = null) {
+    // Si no se proporcionan parámetros, obtener del input del estado del sistema
+    if (!host || !port) {
+        const gripperInput = document.getElementById('gripperIPInput');
+        if (!gripperInput) {
+            console.error('Input de IP del gripper no encontrado');
+            return;
+        }
+        
+        const ipPortValue = gripperInput.value.trim();
+        if (!ipPortValue || !ipPortValue.includes(':')) {
+            console.error('Formato de IP:Puerto inválido');
+            return;
+        }
+        
+        const parts = ipPortValue.split(':');
+        host = parts[0].trim();
+        port = parseInt(parts[1].trim());
     }
-    
-    const host = hostInput.value.trim();
-    const port = parseInt(portInput.value);
     
     if (!host) {
         alert('La IP/Host es requerida');
-        hostInput.focus();
         return;
     }
     
     if (!port || port < 1 || port > 65535) {
         alert('El puerto debe ser un número entre 1 y 65535');
-        portInput.focus();
         return;
     }
     
     try {
-        if (statusText) {
-            statusText.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Actualizando configuración...';
+        // Actualizar estado del gripper
+        const gripperStatus = document.getElementById('gripperStatus');
+        if (gripperStatus) {
+            gripperStatus.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Actualizando...';
+            gripperStatus.className = 'status-moving';
         }
         
         const response = await fetch('/api/gripper/config', {
@@ -759,8 +776,10 @@ window.updateGripperConfig = async function() {
         const data = await response.json();
         
         if (data.success) {
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${data.message}`;
+            // Actualizar el input con la configuración confirmada
+            const gripperInput = document.getElementById('gripperIPInput');
+            if (gripperInput) {
+                gripperInput.value = `${host}:${port}`;
             }
             
             // Actualizar badges de conexión
@@ -772,16 +791,33 @@ window.updateGripperConfig = async function() {
             });
             
             console.log('✅ Configuración del gripper actualizada');
+            
+            // Restaurar estado normal
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Configuración actualizada';
+                gripperStatus.className = 'status-connected';
+                
+                // Volver al estado desconectado después de un momento
+                setTimeout(() => {
+                    if (gripperStatus) {
+                        gripperStatus.textContent = 'Desconectado';
+                        gripperStatus.className = 'status-disconnected';
+                    }
+                }, 2000);
+            }
         } else {
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error: ${data.message}`;
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Error al actualizar';
+                gripperStatus.className = 'status-disconnected';
             }
             alert('Error: ' + data.message);
         }
     } catch (error) {
         console.error('Error actualizando configuración:', error);
-        if (statusText) {
-            statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error de conexión`;
+        const gripperStatus = document.getElementById('gripperStatus');
+        if (gripperStatus) {
+            gripperStatus.textContent = 'Error de conexión';
+            gripperStatus.className = 'status-disconnected';
         }
         alert('Error actualizando configuración: ' + error.message);
     }
@@ -795,24 +831,27 @@ window.connectGripper = async function() {
         });
         
         const data = await response.json();
-        const statusText = document.getElementById('connectionStatus');
+        const gripperStatus = document.getElementById('gripperStatus');
         
         if (data.success) {
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${data.message}`;
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Conectado';
+                gripperStatus.className = 'status-connected';
             }
             console.log('✅ Gripper conectado');
         } else {
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> ${data.message}`;
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Error al conectar';
+                gripperStatus.className = 'status-disconnected';
             }
             alert('Error conectando: ' + data.message);
         }
     } catch (error) {
         console.error('Error conectando gripper:', error);
-        const statusText = document.getElementById('connectionStatus');
-        if (statusText) {
-            statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error de conexión`;
+        const gripperStatus = document.getElementById('gripperStatus');
+        if (gripperStatus) {
+            gripperStatus.textContent = 'Error de conexión';
+            gripperStatus.className = 'status-disconnected';
         }
     }
 };
@@ -825,11 +864,12 @@ window.disconnectGripper = async function() {
         });
         
         const data = await response.json();
-        const statusText = document.getElementById('connectionStatus');
+        const gripperStatus = document.getElementById('gripperStatus');
         
         if (data.success) {
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-info-circle"></i> ${data.message}`;
+            if (gripperStatus) {
+                gripperStatus.textContent = 'Desconectado';
+                gripperStatus.className = 'status-disconnected';
             }
             
             // Actualizar badges como desconectado
@@ -840,6 +880,11 @@ window.disconnectGripper = async function() {
         }
     } catch (error) {
         console.error('Error desconectando gripper:', error);
+        const gripperStatus = document.getElementById('gripperStatus');
+        if (gripperStatus) {
+            gripperStatus.textContent = 'Error';
+            gripperStatus.className = 'status-disconnected';
+        }
     }
 };
 
