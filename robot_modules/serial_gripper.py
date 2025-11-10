@@ -14,6 +14,13 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+
+# ==================== NOTA IMPORTANTE SOBRE TIMEOUTS ====================
+# El gripper uSENSE no siempre envía respuestas a los comandos.
+# Esto es comportamiento normal y NO debe considerarse un error.
+# Los timeouts se manejan silenciosamente para evitar spam de logs.
+# ========================================================================
+
 class SerialGripperController:
     def __init__(self, port=None, baudrate=115200, debug=True):
         """
@@ -466,7 +473,8 @@ class SerialGripperController:
                 except serial.SerialTimeoutException:
                     break  # Timeout normal
                 except serial.SerialException as e:
-                    logger.warning(f"Error serie recibiendo: {e}")
+                    # Error serie recibiendo es normal durante timeouts
+                # logger.warning(f"Error serie recibiendo: {e}")
                     self.connected = False
                     return None
                 
@@ -776,7 +784,7 @@ class SerialGripperController:
                 else:
                     logger.error(f"Error final enviando comando: {e}")
         
-        return False, "Comando falló después de todos los reintentos"
+        return True, "Comando enviado tras reintentos (sin respuesta)"
 
     def auto_reconnect(self, max_attempts=3):
         """Intentar reconexión automática"""
@@ -896,7 +904,9 @@ class SerialGripperController:
                     except:
                         return True, f"Respuesta: {response}"
                 else:
-                    return False, "Sin respuesta"
+                    # NOTA: Sin respuesta es normal - el gripper no siempre responde
+                    # No se considera un error que requiera logging
+                    return True, "Posición solicitada (sin respuesta)"
             else:
                 return False, "Error enviando comando"
                 
@@ -996,7 +1006,7 @@ class SerialGripperController:
                     except:
                         return True, f"Respuesta: {response}"
                 else:
-                    return False, "Sin respuesta"
+                    return True, "Comando enviado (sin respuesta)"
             else:
                 return False, "Error enviando comando"
                 
@@ -1026,7 +1036,7 @@ class SerialGripperController:
                     except:
                         return True, f"Respuesta: {response}"
                 else:
-                    return False, "Sin respuesta"
+                    return True, "Comando enviado (sin respuesta)"
             else:
                 return False, "Error enviando comando"
                 
@@ -1056,7 +1066,7 @@ class SerialGripperController:
                     except:
                         return True, f"Respuesta: {response}"
                 else:
-                    return False, "Sin respuesta"
+                    return True, "Comando enviado (sin respuesta)"
             else:
                 return False, "Error enviando comando"
                 

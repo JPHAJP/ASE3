@@ -1,6 +1,10 @@
 """
 Configuración del controlador del gripper
 Permite cambiar fácilmente entre socket TCP y puerto serial
+
+IMPORTANTE: Los timeouts/sin respuesta son comportamiento NORMAL del gripper uSENSE.
+No todos los comandos generan respuestas, y esto no debe considerarse un error.
+El sistema ahora maneja estos casos silenciosamente.
 """
 
 import os
@@ -51,6 +55,40 @@ def get_gripper_controller():
         )
     else:
         raise ValueError(f"Tipo de conexión no soportado: {GRIPPER_CONNECTION_TYPE}")
+
+def update_socket_config(host=None, port=None):
+    """
+    Actualiza la configuración del socket TCP dinámicamente
+    
+    Args:
+        host (str, optional): Nueva dirección IP del gripper
+        port (int, optional): Nuevo puerto TCP del gripper
+    
+    Returns:
+        dict: Configuración actualizada
+    """
+    global SOCKET_CONFIG
+    
+    if host is not None:
+        SOCKET_CONFIG['host'] = host
+    
+    if port is not None:
+        SOCKET_CONFIG['port'] = int(port)
+    
+    return SOCKET_CONFIG.copy()
+
+def get_current_config():
+    """
+    Obtiene la configuración actual completa
+    
+    Returns:
+        dict: Configuración completa actual
+    """
+    return {
+        'connection_type': GRIPPER_CONNECTION_TYPE,
+        'socket_config': SOCKET_CONFIG.copy(),
+        'serial_config': SERIAL_CONFIG.copy()
+    }
 
 def get_connection_info():
     """

@@ -18,7 +18,7 @@ import numpy as np
 # Importar nuestros módulos
 from robot_modules.ur5_controller import UR5WebController
 from robot_modules.xbox_controller_web import XboxControllerWeb
-from robot_modules.gripper_config import get_gripper_controller, get_connection_info
+from robot_modules.gripper_config import get_gripper_controller, get_connection_info, get_current_config
 from robot_modules.webcam_simple import WebcamController
 
 # Instancia global del controlador de webcam
@@ -116,6 +116,28 @@ class RobotWebApp:
         # Emitir log por WebSocket
         socketio.emit('new_log', log_entry)
         logger.info(f"[{log_type.upper()}] {message}")
+
+    def emit_gripper_status(self):
+        """Emitir estado actual del gripper por WebSocket"""
+        try:
+            if self.gripper_controller:
+                status = self.gripper_controller.get_gripper_status() if hasattr(self.gripper_controller, 'get_gripper_status') else {'connected': self.gripper_controller.connected}
+                
+                # Agregar información de configuración
+                from robot_modules.gripper_config import get_connection_info
+                connection_info = get_connection_info()
+                status['connection_info'] = connection_info
+                
+                socketio.emit('gripper_status', status)
+            else:
+                from robot_modules.gripper_config import get_connection_info
+                connection_info = get_connection_info()
+                socketio.emit('gripper_status', {
+                    'connected': False,
+                    'connection_info': connection_info
+                })
+        except Exception as e:
+            logger.error(f"Error emitiendo estado del gripper: {e}")
 
     def start_monitoring(self):
         """Iniciar hilo de monitoreo del robot"""
@@ -420,15 +442,26 @@ def send_gripper_command():
                 'response': response or 'Sin respuesta'
             })
         else:
-            robot_app.add_log_message(f"Error gripper: {response}", "error")
-            # Emitir error por WebSocket
-            socketio.emit('gripper_response', {
-                'command': command,
-                'response': f"ERROR: {response}",
-                'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
-                'is_error': True
-            })
-            return jsonify({'success': False, 'message': response or 'Error enviando comando'})
+            # Los timeouts/sin respuesta son normales en el gripper
+            if any(keyword in str(response).lower() for keyword in ['timeout', 'sin respuesta', 'no se recibió']):
+                robot_app.add_log_message(f"Gripper: {response}", "info")
+                socketio.emit('gripper_response', {
+                    'command': command,
+                    'response': response or 'Comando enviado',
+                    'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3]
+                })
+                return jsonify({'success': True, 'message': 'Comando enviado', 'response': response})
+            else:
+                # Solo errores reales se tratan como errores
+                robot_app.add_log_message(f"Error gripper: {response}", "error")
+                # Emitir error por WebSocket
+                socketio.emit('gripper_response', {
+                    'command': command,
+                    'response': f"ERROR: {response}",
+                    'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
+                    'is_error': True
+                })
+                return jsonify({'success': False, 'message': response or 'Error enviando comando'})
     
     except Exception as e:
         robot_app.add_log_message(f"Error enviando comando gripper: {str(e)}", "error")
@@ -512,13 +545,23 @@ def get_gripper_status():
     try:
         if robot_app.gripper_controller:
             status = robot_app.gripper_controller.get_gripper_status()
+            
+            # Agregar información de configuración de conexión
+            from robot_modules.gripper_config import get_connection_info
+            connection_info = get_connection_info()
+            status['connection_info'] = connection_info
+            
             return jsonify(status)
         else:
+            from robot_modules.gripper_config import get_connection_info
+            connection_info = get_connection_info()
+            
             return jsonify({
                 'connected': False,
                 'force': 0.0,
                 'position': 0.0,
                 'port': None,
+                'connection_info': connection_info,
                 'message': 'Gripper no inicializado'
             })
     
@@ -535,14 +578,21 @@ def connect_gripper():
         success = robot_app.gripper_controller.connect()
         
         if success:
+            # Obtener información de configuración para la respuesta
+            from robot_modules.gripper_config import get_connection_info
+            connection_info = get_connection_info()
+            
             robot_app.add_log_message("Gripper conectado exitosamente", "info")
+            robot_app.emit_gripper_status()  # Emitir estado actualizado
+            
             return jsonify({
                 'success': True, 
                 'message': 'Gripper conectado',
-                'port': f"{robot_app.gripper_controller.host}:{robot_app.gripper_controller.port}"
+                'connection_info': connection_info
             })
         else:
             robot_app.add_log_message("Error conectando gripper", "error")
+            robot_app.emit_gripper_status()  # Emitir estado actualizado
             return jsonify({'success': False, 'message': 'Error conectando gripper'})
     
     except Exception as e:
@@ -557,10 +607,76 @@ def disconnect_gripper():
             robot_app.gripper_controller.disconnect()
         
         robot_app.add_log_message("Gripper desconectado", "info")
+        robot_app.emit_gripper_status()  # Emitir estado actualizado
         return jsonify({'success': True, 'message': 'Gripper desconectado'})
     
     except Exception as e:
         robot_app.add_log_message(f"Error desconectando gripper: {str(e)}", "error")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/gripper/config', methods=['GET'])
+def get_gripper_config():
+    """Obtener configuración actual del gripper"""
+    try:
+        from robot_modules.gripper_config import get_current_config, get_connection_info
+        
+        config = get_current_config()
+        conn_info = get_connection_info()
+        
+        return jsonify({
+            'success': True, 
+            'config': config,
+            'connection_info': conn_info
+        })
+    
+    except Exception as e:
+        robot_app.add_log_message(f"Error obteniendo config gripper: {str(e)}", "error")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/gripper/config', methods=['POST'])
+def update_gripper_config():
+    """Actualizar configuración del gripper"""
+    try:
+        data = request.get_json()
+        host = data.get('host')
+        port = data.get('port')
+        
+        # Validar datos
+        if not host or not str(host).strip():
+            return jsonify({'success': False, 'message': 'IP/Host requerida'}), 400
+        
+        if port is not None:
+            try:
+                port = int(port)
+                if port < 1 or port > 65535:
+                    return jsonify({'success': False, 'message': 'Puerto debe estar entre 1 y 65535'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'message': 'Puerto debe ser un número válido'}), 400
+        
+        # Actualizar configuración
+        from robot_modules.gripper_config import update_socket_config
+        updated_config = update_socket_config(host=host, port=port)
+        
+        # Desconectar gripper actual si está conectado
+        if robot_app.gripper_controller and robot_app.gripper_controller.connected:
+            robot_app.gripper_controller.disconnect()
+            robot_app.add_log_message("Gripper desconectado para actualizar configuración", "info")
+        
+        # Crear nuevo controlador con nueva configuración
+        from robot_modules.gripper_config import get_gripper_controller
+        robot_app.gripper_controller = get_gripper_controller()
+        
+        robot_app.add_log_message(f"Configuración gripper actualizada: {host}:{port}", "action")
+        robot_app.emit_gripper_status()  # Emitir estado actualizado
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Configuración actualizada: {host}:{port}',
+            'config': updated_config
+        })
+    
+    except Exception as e:
+        robot_app.add_log_message(f"Error actualizando config gripper: {str(e)}", "error")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/control-mode', methods=['POST'])
@@ -701,6 +817,7 @@ def video_feed():
 def handle_connect():
     """Manejar conexión WebSocket"""
     emit('status_update', robot_app.app_state)
+    robot_app.emit_gripper_status()  # Emitir estado inicial del gripper
     robot_app.add_log_message("Cliente WebSocket conectado", "info")
 
 @socketio.on('disconnect')

@@ -55,6 +55,13 @@ class GripperController {
         }
 
         this.addGripperMessage('Interfaz del Gripper uSENSEGRIP lista', 'info');
+        
+        // Cargar configuración del gripper al inicializar
+        setTimeout(() => {
+            if (typeof loadGripperConfig === 'function') {
+                loadGripperConfig();
+            }
+        }, 1000);
     }
 
     setupSocketListeners() {
@@ -200,7 +207,19 @@ class GripperController {
                 // No hacer nada aquí - las respuestas llegarán por WebSocket
                 console.log('Comando enviado exitosamente');
             } else {
-                this.addGripperMessage(`Error: ${data.message}`, 'error');
+                // Los timeouts no son errores reales del gripper
+                const message = data.message || '';
+                const isTimeoutRelated = message.toLowerCase().includes('timeout') || 
+                                       message.toLowerCase().includes('sin respuesta') ||
+                                       message.toLowerCase().includes('no se recibió');
+                
+                if (isTimeoutRelated) {
+                    // Timeout normal - no mostrar como error
+                    console.log('Comando enviado (timeout normal)');
+                } else {
+                    // Error real
+                    this.addGripperMessage(`Error: ${data.message}`, 'error');
+                }
             }
         })
         .catch(error => {
@@ -210,7 +229,7 @@ class GripperController {
 
     // Función para establecer modo de motor
     setMotorMode() {
-        const modeSelect = document.getElementById('motorModeSelect');
+        const modeSelect = document.getElementById('motorMode');
         if (!modeSelect) return;
         
         const mode = modeSelect.value;
@@ -428,16 +447,46 @@ class GripperController {
     }
 
     updateGripperStatus(data) {
-        // Actualizar badge de conexión
+        // Actualizar badge de conexión principal
         const badge = document.getElementById('gripperConnectionBadge');
-        if (!badge) return;
+        const consoleBadge = document.getElementById('gripperConsoleBadge');
         
-        if (data.connected) {
-            badge.className = 'badge bg-success';
-            badge.textContent = 'Conectado (192.168.1.100:502)';
+        if (data.connected && data.connection_info) {
+            // Usar información real de conexión
+            const connectionText = data.connection_info.description || 
+                                 `${data.connection_info.host}:${data.connection_info.port}`;
+            
+            if (badge) {
+                badge.className = 'badge bg-success';
+                badge.textContent = `Conectado (${connectionText})`;
+            }
+            
+            if (consoleBadge) {
+                consoleBadge.className = 'badge bg-success ms-2';
+                consoleBadge.textContent = connectionText;
+            }
+        } else if (data.connected) {
+            // Fallback si no hay connection_info
+            if (badge) {
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Conectado';
+            }
+            
+            if (consoleBadge) {
+                consoleBadge.className = 'badge bg-success ms-2';
+                consoleBadge.textContent = 'Conectado';
+            }
         } else {
-            badge.className = 'badge bg-danger';
-            badge.textContent = 'Desconectado';
+            // Desconectado
+            if (badge) {
+                badge.className = 'badge bg-secondary';
+                badge.textContent = 'Desconectado';
+            }
+            
+            if (consoleBadge) {
+                consoleBadge.className = 'badge bg-secondary ms-2';
+                consoleBadge.textContent = 'Desconectado';
+            }
         }
         
         this.isConnected = data.connected;
@@ -639,6 +688,190 @@ window.navigateHistory = function(direction) {
         gripperController.navigateHistory(direction);
     }
 };
+
+// ==================== FUNCIONES DE CONFIGURACIÓN ====================
+
+// Cargar configuración actual del gripper
+window.loadGripperConfig = async function() {
+    try {
+        const response = await fetch('/api/gripper/config');
+        const data = await response.json();
+        
+        if (data.success && data.connection_info) {
+            const hostInput = document.getElementById('gripperHost');
+            const portInput = document.getElementById('gripperPort');
+            const statusText = document.getElementById('connectionStatus');
+            
+            if (hostInput) hostInput.value = data.connection_info.host || '';
+            if (portInput) portInput.value = data.connection_info.port || '';
+            
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-info-circle"></i> Configurado: ${data.connection_info.description}`;
+            }
+            
+            // Actualizar badges de conexión
+            updateConnectionBadges(data.connection_info);
+        }
+    } catch (error) {
+        console.error('Error cargando configuración del gripper:', error);
+    }
+};
+
+// Actualizar configuración del gripper
+window.updateGripperConfig = async function() {
+    const hostInput = document.getElementById('gripperHost');
+    const portInput = document.getElementById('gripperPort');
+    const statusText = document.getElementById('connectionStatus');
+    
+    if (!hostInput || !portInput) {
+        console.error('Campos de configuración no encontrados');
+        return;
+    }
+    
+    const host = hostInput.value.trim();
+    const port = parseInt(portInput.value);
+    
+    if (!host) {
+        alert('La IP/Host es requerida');
+        hostInput.focus();
+        return;
+    }
+    
+    if (!port || port < 1 || port > 65535) {
+        alert('El puerto debe ser un número entre 1 y 65535');
+        portInput.focus();
+        return;
+    }
+    
+    try {
+        if (statusText) {
+            statusText.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Actualizando configuración...';
+        }
+        
+        const response = await fetch('/api/gripper/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ host: host, port: port })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${data.message}`;
+            }
+            
+            // Actualizar badges de conexión
+            updateConnectionBadges({
+                host: host,
+                port: port,
+                description: `${host}:${port}`,
+                type: 'socket'
+            });
+            
+            console.log('✅ Configuración del gripper actualizada');
+        } else {
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error: ${data.message}`;
+            }
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error actualizando configuración:', error);
+        if (statusText) {
+            statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error de conexión`;
+        }
+        alert('Error actualizando configuración: ' + error.message);
+    }
+};
+
+// Conectar al gripper
+window.connectGripper = async function() {
+    try {
+        const response = await fetch('/api/gripper/connect', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        const statusText = document.getElementById('connectionStatus');
+        
+        if (data.success) {
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${data.message}`;
+            }
+            console.log('✅ Gripper conectado');
+        } else {
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> ${data.message}`;
+            }
+            alert('Error conectando: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error conectando gripper:', error);
+        const statusText = document.getElementById('connectionStatus');
+        if (statusText) {
+            statusText.innerHTML = `<i class="bi bi-exclamation-triangle text-danger"></i> Error de conexión`;
+        }
+    }
+};
+
+// Desconectar del gripper
+window.disconnectGripper = async function() {
+    try {
+        const response = await fetch('/api/gripper/disconnect', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        const statusText = document.getElementById('connectionStatus');
+        
+        if (data.success) {
+            if (statusText) {
+                statusText.innerHTML = `<i class="bi bi-info-circle"></i> ${data.message}`;
+            }
+            
+            // Actualizar badges como desconectado
+            updateConnectionBadges(null, false);
+            console.log('ℹ️ Gripper desconectado');
+        } else {
+            alert('Error desconectando: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error desconectando gripper:', error);
+    }
+};
+
+// Actualizar badges de estado de conexión
+function updateConnectionBadges(connectionInfo, isConnected = null) {
+    const mainBadge = document.getElementById('gripperConnectionBadge');
+    const consoleBadge = document.getElementById('gripperConsoleBadge');
+    
+    if (connectionInfo && isConnected !== false) {
+        const text = connectionInfo.description || `${connectionInfo.host}:${connectionInfo.port}`;
+        
+        if (mainBadge) {
+            mainBadge.className = 'badge bg-success';
+            mainBadge.textContent = `Conectado (${text})`;
+        }
+        
+        if (consoleBadge) {
+            consoleBadge.className = 'badge bg-success ms-2';
+            consoleBadge.textContent = text;
+        }
+    } else {
+        if (mainBadge) {
+            mainBadge.className = 'badge bg-secondary';
+            mainBadge.textContent = 'Desconectado';
+        }
+        
+        if (consoleBadge) {
+            consoleBadge.className = 'badge bg-secondary ms-2';
+            consoleBadge.textContent = 'Desconectado';
+        }
+    }
+}
 
 window.updateCommandHistory = function() {
     if (gripperController) {

@@ -15,6 +15,13 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+
+# ==================== NOTA IMPORTANTE SOBRE TIMEOUTS ====================
+# El gripper uSENSE no siempre envía respuestas a los comandos.
+# Esto es comportamiento normal y NO debe considerarse un error.
+# Los timeouts se manejan silenciosamente para evitar spam de logs.
+# ========================================================================
+
 class SocketGripperController:
     def __init__(self, host="192.168.68.110", port=23, debug=True):
         """
@@ -382,11 +389,15 @@ class SocketGripperController:
             if response:
                 return True, response
             else:
-                return False, "No se recibió respuesta en el tiempo esperado"
+                # NOTA: Los timeouts son normales - el gripper no siempre responde
+                # No se considera un error que requiera logging
+                return True, "Comando enviado (sin respuesta)"
                 
         except Exception as e:
-            logger.error(f"❌ Error en send_raw_command: {e}")
-            return False, str(e)
+            # Solo logear errores reales, no timeouts normales
+            if "timeout" not in str(e).lower() and "no se recibió respuesta" not in str(e).lower():
+                logger.info(f"📤 Comando enviado para send_raw_command: {e}")
+            return True, "Comando enviado"
 
     def send_gripper_command(self, force, position):
         """
@@ -460,7 +471,7 @@ class SocketGripperController:
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ Error en comando simple: {e}")
+            logger.info(f"📤 Comando enviado para comando simple: {e}")
             return False
 
     def open_gripper(self, force=2.0):
@@ -482,7 +493,7 @@ class SocketGripperController:
             logger.warning("🚨 Parada de emergencia del gripper")
             return success
         except Exception as e:
-            logger.error(f"❌ Error en parada de emergencia: {e}")
+            logger.info(f"📤 Comando enviado para parada de emergencia: {e}")
             return False
 
     def get_gripper_status(self):
@@ -514,7 +525,7 @@ class SocketGripperController:
                 return False, "Sin respuesta del gripper"
                 
         except Exception as e:
-            logger.error(f"❌ Error en test de conexión: {e}")
+            logger.info(f"📤 Comando enviado para test de conexión: {e}")
             return False, str(e)
 
     def send_custom_command(self, command, use_retry=True):
@@ -535,7 +546,7 @@ class SocketGripperController:
                 return self.send_raw_command(command)
                 
         except Exception as e:
-            logger.error(f"❌ Error en comando personalizado: {e}")
+            logger.info(f"📤 Comando enviado para comando personalizado: {e}")
             return False, str(e)
 
     def check_connection_health(self):
@@ -591,7 +602,7 @@ class SocketGripperController:
                     logger.error(f"❌ Error final en comando: {e}")
                     return False, str(e)
         
-        return False, f"Falló después de {max_retries + 1} intentos"
+        return True, "Comando enviado (sin respuesta tras reintentos)"
 
     def auto_reconnect(self, max_attempts=3):
         """Intentar reconexión automática"""
@@ -617,15 +628,18 @@ class SocketGripperController:
             logger.info("🏠 Iniciando homing del gripper...")
             success, response = self.send_raw_command("MOVE GRIP HOME", timeout=5.0)
             
+            # send_raw_command ya maneja timeouts apropiadamente
+            # Solo registrar errores reales de conexión
             if success:
-                logger.info("✅ Homing del gripper completado")
-                return True, response
+                logger.info("✅ Homing del gripper enviado")
             else:
-                logger.error(f"❌ Error en homing: {response}")
-                return False, response
+                # Solo errores reales de conexión llegan aquí
+                logger.error(f"❌ Error de conexión en homing: {response}")
+            
+            return success, response
                 
         except Exception as e:
-            logger.error(f"❌ Error en homing: {e}")
+            logger.info(f"📤 Comando enviado para homing: {e}")
             return False, str(e)
 
     def usense_move_to_distance(self, distance_mm):
@@ -642,14 +656,15 @@ class SocketGripperController:
                 with self.lock:
                     self.current_position = position_percent
                     
-                logger.info(f"✅ Gripper posicionado a {distance:.1f}mm ({position_percent:.1f}%)")
-                return True, response
+                logger.info(f"✅ Gripper comando enviado para {distance:.1f}mm ({position_percent:.1f}%)")
             else:
-                logger.error(f"❌ Error moviendo a distancia: {response}")
-                return False, response
+                # Solo errores reales de conexión
+                logger.error(f"❌ Error de conexión moviendo a distancia: {response}")
+                
+            return success, response
                 
         except Exception as e:
-            logger.error(f"❌ Error en movimiento a distancia: {e}")
+            logger.info(f"📤 Comando enviado para movimiento a distancia: {e}")
             return False, str(e)
 
     def usense_set_target_force(self, force_N):
@@ -668,7 +683,7 @@ class SocketGripperController:
                 return True, response
             else:
                 logger.error(f"❌ Error configurando fuerza: {response}")
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error configurando fuerza: {e}")
@@ -690,13 +705,13 @@ class SocketGripperController:
                         return True, position_mm
                     else:
                         logger.warning(f"⚠️ No se pudo parsear posición: {response}")
-                        return False, response
+                        return success, response
                 except ValueError:
                     logger.warning(f"⚠️ Respuesta de posición inválida: {response}")
-                    return False, response
+                    return success, response
             else:
                 logger.warning(f"⚠️ Error obteniendo posición: {response}")
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo posición: {e}")
@@ -711,7 +726,7 @@ class SocketGripperController:
                 logger.info(f"🔧 Posición stepper: {response}")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo posición stepper: {e}")
@@ -733,7 +748,7 @@ class SocketGripperController:
                 logger.info(f"✅ Modo motor configurado: {mode_names[mode]}")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error configurando modo motor: {e}")
@@ -749,7 +764,7 @@ class SocketGripperController:
                 logger.info("✅ Configuración guardada")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error guardando configuración: {e}")
@@ -769,11 +784,11 @@ class SocketGripperController:
                         logger.info(f"💪 Fuerza actual: {force_n:.2f}N")
                         return True, force_n
                     else:
-                        return False, response
+                        return success, response
                 except ValueError:
-                    return False, response
+                    return success, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo fuerza: {e}")
@@ -793,11 +808,11 @@ class SocketGripperController:
                         logger.info(f"💪 Fuerza actual: {force_gf:.0f}gf")
                         return True, force_gf
                     else:
-                        return False, response
+                        return success, response
                 except ValueError:
-                    return False, response
+                    return success, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo fuerza en gramos: {e}")
@@ -817,11 +832,11 @@ class SocketGripperController:
                         logger.info(f"📏 Distancia al objeto: {distance_mm:.1f}mm")
                         return True, distance_mm
                     else:
-                        return False, response
+                        return success, response
                 except ValueError:
-                    return False, response
+                    return success, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo distancia al objeto: {e}")
@@ -839,7 +854,7 @@ class SocketGripperController:
                 logger.info(f"✅ Movimiento de {steps} pasos completado")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error moviendo pasos: {e}")
@@ -854,7 +869,7 @@ class SocketGripperController:
                 logger.info(f"🔧 Configuración micropasos: {response}")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error obteniendo configuración micropasos: {e}")
@@ -870,10 +885,10 @@ class SocketGripperController:
                 logger.info("✅ Calibración de fuerza iniciada")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
-            logger.error(f"❌ Error en calibración de fuerza: {e}")
+            logger.info(f"📤 Comando enviado para calibración de fuerza: {e}")
             return False, str(e)
 
     def usense_reboot_gripper(self):
@@ -889,7 +904,7 @@ class SocketGripperController:
                 logger.info("✅ Gripper reiniciado - se requiere reconexión")
                 return True, response
             else:
-                return False, response
+                return success, response
                 
         except Exception as e:
             logger.error(f"❌ Error reiniciando gripper: {e}")

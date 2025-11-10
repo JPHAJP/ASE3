@@ -306,16 +306,105 @@
             overflow: hidden;
         }
 
+        /* CONTENEDOR DE CÁMARA - REDISEÑO COMPLETO */
         .webcam-container {
+            /* Card base con tamaño fijo */
+            width: 100% !important;
+            height: auto !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            background: var(--card-bg) !important;
+            box-shadow: 0 8px 32px rgba(0, 102, 204, 0.15) !important;
+            overflow: hidden !important;
+        }
+
+        /* Header de la cámara - ocupa todo el ancho del contenedor */
+        .webcam-container .card-header {
+            width: 100% !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.85rem !important;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue)) !important;
+            color: white !important;
+            border-radius: 16px 16px 0 0 !important;
+            border: none !important;
+            font-weight: 600 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+        }
+
+        /* Botones en el header */
+        .webcam-container .card-header .btn-sm {
+            padding: 0.2rem 0.4rem !important;
+            font-size: 0.8rem !important;
+            margin-left: 0.25rem !important;
+            border-radius: 8px !important;
+        }
+
+        /* Badge en el header */
+        .webcam-container .badge {
+            font-size: 0.7rem !important;
+        }
+
+        /* Card body - sin padding para maximizar espacio */
+        .webcam-container .card-body {
+            padding: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Contenedor específico para el video - posición relativa para hijos absolutos */
+        .webcam-video-container {
+            background: #000 !important;
+            border-radius: 0 0 16px 16px !important;
+            height: 200px !important;
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: white !important;
+            overflow: hidden !important;
+            position: relative !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Imagen de la cámara */
+        .webcam-container #webcamStream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 0 0 14px 14px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
             background: #000;
-            border-radius: 12px;
-            height: 300px;
+        }
+
+        /* Placeholder cuando no hay video */
+        .webcam-container #webcamPlaceholder {
+            color: #666;
+            text-align: center;
+            width: 100%;
+            height: 100%;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: white;
-            overflow: hidden;
-            border: 2px solid var(--border-color);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 5;
+        }
+
+        /* Mensajes de la cámara */
+        .webcam-container #webcamMessages {
+            padding: 0.5rem !important;
+            background: var(--card-bg) !important;
+            border-radius: 0 0 14px 14px !important;
+            font-size: 0.8rem !important;
         }
 
         .webcam-stream {
@@ -754,8 +843,32 @@
                 height: 150px;
             }
             
-            .webcam-container {
+            /* RESPONSIVE - CÁMARA WEB TABLETS */
+            .webcam-video-container {
                 height: 150px !important;
+            }
+            
+            /* Header de cámara en dispositivos pequeños */
+            .webcam-container .card-header {
+                padding: 0.4rem 0.5rem !important;
+                font-size: 0.8rem !important;
+                flex-wrap: nowrap !important;
+            }
+            
+            .webcam-container .card-header span {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 120px;
+            }
+            
+            .webcam-container .btn-group {
+                gap: 2px;
+            }
+            
+            .webcam-container .btn-sm {
+                padding: 0.15rem 0.3rem;
+                font-size: 0.75rem;
             }
             
             /* Stack las columnas en dispositivos móviles */
@@ -783,8 +896,29 @@
                 font-size: 10px;
             }
             
-            .webcam-container {
+            /* RESPONSIVE - CÁMARA WEB MÓVILES PEQUEÑOS */
+            .webcam-video-container {
                 height: 120px !important;
+            }
+            
+            /* Header ultra compacto para móviles pequeños */
+            .webcam-container .card-header {
+                padding: 0.3rem 0.4rem !important;
+                font-size: 0.75rem !important;
+            }
+            
+            .webcam-container .card-header span:first-child {
+                max-width: 90px;
+            }
+            
+            .webcam-container .badge {
+                font-size: 0.65rem;
+                padding: 0.2rem 0.3rem;
+            }
+            
+            .webcam-container .btn-sm {
+                padding: 0.1rem 0.25rem;
+                font-size: 0.7rem;
             }
         }
 
@@ -821,8 +955,8 @@
         }
 
         /* Altura de contenedores multimedia */
-        .webcam-container, .simulation-container {
-            min-height: 180px;
+        .webcam-video-container, .simulation-container {
+            min-height: 200px;
         }
 
         /* Botones más compactos para ahorrar espacio */
@@ -936,6 +1070,16 @@
 
         .webcam-stream:hover {
             box-shadow: 0 6px 12px rgba(0, 212, 255, 0.3);
+        }
+        
+        /* Animación de spinning para iconos de carga */
+        @keyframes spin-icon {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spin {
+            animation: spin-icon 1s linear infinite;
         }
     </style>
 </head>
@@ -1060,9 +1204,48 @@
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-wrench-adjustable"></i> Control de Gripper uSENSEGRIP</span>
-                        <span class="badge bg-success" id="gripperConnectionBadge">Conectado (192.168.1.100:502)</span>
+                        <span class="badge bg-secondary" id="gripperConnectionBadge">Desconectado</span>
                     </div>
                     <div class="card-body">
+                        <!-- Configuración de Conexión -->
+                        <div class="card mb-3">
+                            <div class="card-header py-2">
+                                <small><i class="bi bi-wifi"></i> Configuración de Conexión</small>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label for="gripperHost" class="form-label small">IP/Host del Gripper:</label>
+                                        <input type="text" class="form-control form-control-sm" id="gripperHost" placeholder="192.168.68.125">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="gripperPort" class="form-label small">Puerto:</label>
+                                        <input type="number" class="form-control form-control-sm" id="gripperPort" placeholder="23" min="1" max="65535">
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary btn-sm w-100" onclick="updateGripperConfig()">
+                                            <i class="bi bi-arrow-clockwise"></i> Actualizar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <button class="btn btn-success btn-sm" onclick="connectGripper()">
+                                            <i class="bi bi-plug"></i> Conectar
+                                        </button>
+                                        <button class="btn btn-warning btn-sm" onclick="disconnectGripper()">
+                                            <i class="bi bi-plug-fill"></i> Desconectar
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted" id="connectionStatus">
+                                            <i class="bi bi-info-circle"></i> Estado: Desconectado
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Botones y Inputs -->
                         <div class="card mt-2">
                             <div class="card-header py-2">
@@ -1274,36 +1457,38 @@
                     <!-- Cámara Web -->
                     <div class="col-6">
                         <div class="card webcam-container">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
+                            <div class="card-header">
+                                <div class="d-flex align-items-center">
                                     <span><i class="bi bi-camera-video"></i> Cámara Web</span>
                                     <span id="webcamStatus" class="badge bg-secondary ms-2">Inactiva</span>
                                 </div>
-                                <div>
-                                    <button class="btn btn-sm btn-success me-1" id="startWebcam">
-                                        <i class="bi bi-play-fill"></i> Iniciar
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-success" id="startWebcam" title="Iniciar cámara">
+                                        <i class="bi bi-play-fill"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-danger me-1" id="stopWebcam" disabled>
-                                        <i class="bi bi-stop-fill"></i> Detener
+                                    <button class="btn btn-sm btn-danger" id="stopWebcam" disabled title="Detener cámara">
+                                        <i class="bi bi-stop-fill"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-warning me-1" id="switchCamera">
-                                        <i class="bi bi-arrow-repeat"></i> Cambiar
+                                    <button class="btn btn-sm btn-warning" id="switchCamera" title="Cambiar cámara">
+                                        <i class="bi bi-arrow-repeat"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-light" id="capturePhoto" disabled>
-                                        <i class="bi bi-camera"></i> Capturar
+                                    <button class="btn btn-sm btn-outline-light" id="capturePhoto" disabled title="Capturar foto">
+                                        <i class="bi bi-camera"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="window.webcamController?.forceRefresh()" title="Refresh">
+                                        <i class="bi bi-arrow-clockwise"></i>
                                     </button>
                                 </div>
                             </div>
-                            <div class="card-body p-2">
-                                <div style="height: 200px; background: #000; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative;">
-                                    <img id="webcamStream" src="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 5px; display: none;" alt="Webcam Stream">
-                                    <div id="webcamPlaceholder" style="color: #666; text-align: center;">
+                            <div class="card-body">
+                                <div class="webcam-video-container">
+                                    <img id="webcamStream" src="" alt="Webcam Stream">
+                                    <div id="webcamPlaceholder">
                                         <i class="bi bi-camera-video" style="font-size: 2rem;"></i>
                                         <p class="mt-2 mb-0">Cámara Inactiva</p>
-                                        <small>Presiona "Iniciar" para comenzar</small>
                                     </div>
                                 </div>
-                                <div id="webcamMessages" class="mt-2"></div>
+                                <div id="webcamMessages"></div>
                             </div>
                         </div>
                     </div>
@@ -1335,7 +1520,7 @@
                     <div class="col-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-wrench-adjustable"></i> Gripper <span class="badge bg-success ms-2">192.168.1.100:502</span></span>
+                                <span><i class="bi bi-wrench-adjustable"></i> Gripper <span class="badge bg-secondary ms-2" id="gripperConsoleBadge">Desconectado</span></span>
                                 <button class="btn btn-sm btn-outline-light" onclick="clearGripperConsole()">
                                     <i class="bi bi-trash"></i>
                                 </button>

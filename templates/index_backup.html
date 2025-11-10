@@ -1271,16 +1271,19 @@
                     <!-- Cámara Web -->
                     <div class="col-6">
                         <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-camera-video"></i> Cámara Web</span>
-                                <div>
-                                    <button class="btn btn-sm btn-outline-light me-1" onclick="startWebcam()">
+                            <div class="card-header d-flex justify-content-between align-items-center p-2">
+                                <div class="d-flex align-items-center">
+                                    <span><i class="bi bi-camera-video"></i> Cámara Web</span>
+                                    <span id="webcamStatus" class="badge bg-secondary ms-2 small">Inactiva</span>
+                                </div>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-light" onclick="startWebcam()" title="Iniciar cámara">
                                         <i class="bi bi-play"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-light me-1" onclick="stopWebcam()">
+                                    <button class="btn btn-sm btn-outline-light" onclick="stopWebcam()" title="Detener cámara">
                                         <i class="bi bi-stop"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-light" onclick="capturePhoto()">
+                                    <button class="btn btn-sm btn-outline-light" onclick="capturePhoto()" title="Capturar foto">
                                         <i class="bi bi-camera"></i>
                                     </button>
                                 </div>
@@ -1290,7 +1293,6 @@
                                     <div class="text-center" id="webcamPlaceholder">
                                         <i class="bi bi-camera-video-off" style="font-size: 1.5rem;"></i>
                                         <p class="mt-2 mb-0 small">Cámara Desconectada</p>
-                                        <small>Presiona <i class="bi bi-play"></i> para iniciar</small>
                                     </div>
                                     <img id="webcamStream" class="webcam-stream" style="display: none; width: 100%; height: auto;" alt="Stream de la webcam">
                                 </div>

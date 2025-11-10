@@ -52,7 +52,10 @@ class WebcamController {
             console.log('Respuesta webcam:', data);
             
             if (data.success) {
-                this.showMessage(data.message, 'success');
+                // Solo mostrar mensajes de error o captura de fotos, no de inicio/parada
+                if (data.message.includes('capturada') || data.message.includes('Imagen')) {
+                    this.showMessage(data.message, 'success');
+                }
                 
                 // Actualizar estado de botones
                 if (data.message.includes('iniciada')) {
@@ -61,40 +64,43 @@ class WebcamController {
                     this.updateButtonStates(false);
                 }
             } else {
+                // Solo mostrar errores reales
                 this.showMessage(data.error || 'Error desconocido', 'error');
             }
         });
 
         this.socket.on('webcam_status', (status) => {
-            console.log('Estado webcam:', status);
+            console.log('📡 Estado webcam recibido:', status);
             this.isActive = status.is_active;
             this.currentCamera = status.camera_index;
             this.updateButtonStates(this.isActive);
+            console.log('🔄 Estado actualizado - Activo:', this.isActive, 'Cámara:', this.currentCamera);
         });
     }
 
     startWebcam() {
         console.log('🚀 Iniciando webcam...');
         this.socket.emit('start_webcam');
-        this.showMessage('Iniciando cámara...', 'info');
+        // Eliminado: this.showMessage('Iniciando cámara...', 'info');
     }
 
     stopWebcam() {
         console.log('🛑 Deteniendo webcam...');
         this.socket.emit('stop_webcam');
-        this.showMessage('Deteniendo cámara...', 'info');
+        // Eliminado: this.showMessage('Deteniendo cámara...', 'info');
     }
 
     capturePhoto() {
         console.log('📸 Capturando foto...');
         this.socket.emit('capture_image');
-        this.showMessage('Capturando imagen...', 'info');
+        // Solo mostrar mensaje de captura ya que es importante
+        this.showMessage('Imagen capturada', 'success');
     }
 
     switchCamera() {
         console.log('🔄 Cambiando cámara...');
         this.socket.emit('switch_camera', {});
-        this.showMessage('Cambiando cámara...', 'info');
+        // Eliminado: this.showMessage('Cambiando cámara...', 'info');
     }
 
     updateButtonStates(isActive) {
@@ -122,15 +128,28 @@ class WebcamController {
 
     updateVideoStream(isActive) {
         const videoElement = document.getElementById('webcamStream');
+        const placeholderElement = document.getElementById('webcamPlaceholder');
         
-        if (videoElement) {
+        console.log('🎥 Actualizando stream de video, activo:', isActive);
+        
+        if (videoElement && placeholderElement) {
             if (isActive) {
+                // Mostrar video y ocultar placeholder
+                console.log('📹 Mostrando video stream');
                 videoElement.src = '/video_feed?' + new Date().getTime();
                 videoElement.style.display = 'block';
+                videoElement.style.zIndex = '10';
+                placeholderElement.style.display = 'none';
             } else {
+                // Ocultar video y mostrar placeholder
+                console.log('🔘 Mostrando placeholder');
                 videoElement.src = '';
                 videoElement.style.display = 'none';
+                placeholderElement.style.display = 'flex';
+                placeholderElement.style.zIndex = '10';
             }
+        } else {
+            console.error('❌ No se encontraron elementos de video o placeholder');
         }
     }
 
@@ -184,6 +203,16 @@ class WebcamController {
     // Método público para obtener estado
     getStatus() {
         this.socket.emit('get_webcam_status');
+    }
+
+    // Método público para forzar actualización
+    forceRefresh() {
+        console.log('🔄 Forzando actualización de video...');
+        const videoElement = document.getElementById('webcamStream');
+        if (videoElement && this.isActive) {
+            videoElement.src = '/video_feed?' + new Date().getTime();
+            console.log('📹 Video src actualizado:', videoElement.src);
+        }
     }
 }
 

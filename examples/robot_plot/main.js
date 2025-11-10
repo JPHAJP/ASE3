@@ -902,7 +902,7 @@ CONFIG SET MOTORMODE 1
                     document.getElementById('webcamPlaceholder').style.display = 'none';
                     document.getElementById('webcamStatus').textContent = 'Conectada';
                     document.getElementById('webcamStatus').className = 'badge bg-success';
-                    addLogMessage('Cámara web iniciada', 'info');
+                    // Eliminado el mensaje de log de inicio
                 } else {
                     addLogMessage(`Error iniciando cámara: ${data.message}`, 'error');
                 }
@@ -923,7 +923,7 @@ CONFIG SET MOTORMODE 1
                 document.getElementById('webcamPlaceholder').style.display = 'block';
                 document.getElementById('webcamStatus').textContent = 'Desconectada';
                 document.getElementById('webcamStatus').className = 'badge bg-secondary';
-                addLogMessage('Cámara web detenida', 'info');
+                // Eliminado el mensaje de log de parada
             })
             .catch(error => {
                 addLogMessage(`Error: ${error}`, 'error');
