@@ -1,0 +1,2 @@
+﻿n_total,n_exitos,tasa_exito_pct,Fuerza_media,Fuerza_std,Fuerza_min,Fuerza_max,Error_Fuerza_media,Error_Fuerza_std,Error_Fuerza_pct_dentro,Overshoot_media_pct,Overshoot_std_pct,Overshoot_pct_dentro,Tiempo_media_ms,Tiempo_std_ms,Tiempo_min_ms,Tiempo_max_ms,Tiempo_pct_cumple,Temp_Min_C,Temp_Max_C
+100,92,92.0,5.650500000000001,2.178910567835739,1.95,9.3,-0.5495,0.0783333333333333,38.0,-1.890372789938481,3.24170798614759,100.0,328.54,12.614261609765192,295,354,1.0,29,47.0

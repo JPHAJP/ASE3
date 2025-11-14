@@ -16,7 +16,7 @@ GRIPPER_CONNECTION_TYPE = 'socket'
 
 # Configuración para conexión socket TCP
 SOCKET_CONFIG = {
-    'host': '192.168.2.100',  # IP del ESP32 gripper
+    'host': '192.168.0.100',  # IP del ESP32 gripper
     'port': 23,                # Puerto TCP (típicamente 23 para telnet)
     'timeout': 5.0,            # Timeout de conexión en segundos
     'debug': True              # Habilitar logging detallado

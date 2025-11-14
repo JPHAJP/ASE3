@@ -1,0 +1,5 @@
+﻿Variable,n,Media,Desv_Std,Limite_Inferior_3sigma,Limite_Superior_3sigma,Casos_fuera_3sigma,Pct_fuera_3sigma,Shapiro_W,Shapiro_p,Es_Normal_Shapiro,Normaltest_stat,Normaltest_p,Es_Normal_DAgostino,Interpretacion
+Fuerza_Medida_N,100,5.6505,2.1789,-0.8862,12.1872,0,0.0,0.9533,0.0014,No,34.4023,0.0,No,Dentro de control estadístico. Distribución NO normal - considerar transformaciones.
+Tiempo_Respuesta_ms,100,328.54,12.6143,290.6972,366.3828,0,0.0,0.9882,0.5226,Sí,1.4881,0.4752,Sí,Dentro de control estadístico. Distribución aproximadamente normal.
+Overshoot_pct,100,-1.8904,3.2417,-11.6155,7.8348,0,0.0,0.956,0.0021,No,11.2627,0.0036,No,Dentro de control estadístico. Distribución NO normal - considerar transformaciones.
+Error_Fuerza_N,100,-0.5495,0.0783,-0.7845,-0.3145,0,0.0,0.9512,0.001,No,2.7039,0.2587,Sí,Dentro de control estadístico. Distribución aproximadamente normal.

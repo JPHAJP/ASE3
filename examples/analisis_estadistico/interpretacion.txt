@@ -1,0 +1,189 @@
+======================================================================
+REPORTE DE ANÁLISIS DE GRIPPER
+======================================================================
+
+Total de pruebas: 100
+Rango de temperatura: 29.0°C - 47.0°C
+
+======================================================================
+1. TASA DE ÉXITO
+======================================================================
+Tasa de éxito global: 92.0% ✗ REQUIERE ATENCIÓN
+Objetivo: ≥95.0%
+Éxitos: 92 / 100
+
+Análisis de fallas (8 casos):
+  - Setpoint 2.6N: 4 fallas
+  - Setpoint 2.9N: 4 fallas
+
+======================================================================
+2. DESEMPEÑO DE FUERZA
+======================================================================
+Fuerza medida promedio: 5.651 ± 2.179 N
+Error promedio: -0.549 N
+Casos dentro de tolerancia (±0.5N): 38.0% ⚠ Revisar
+
+======================================================================
+3. OVERSHOOT
+======================================================================
+Overshoot promedio: -1.89%
+Casos ≤10.0%: 100.0% ✓ OK
+Límite objetivo: ≤10.0%
+
+======================================================================
+4. TIEMPO DE RESPUESTA
+======================================================================
+Tiempo promedio: 328.5 ± 12.6 ms
+Casos ≤300.0ms: 1.0% ⚠ Optimizar
+Objetivo: ≤300.0ms
+
+======================================================================
+5. REPETIBILIDAD Y CAPACIDAD DEL PROCESO
+======================================================================
+
+Mejor Cpk: 0.76 (Objeto: Tubo de ensayo, objetivo: 10.0mm)
+Peor Cpk: -0.11 (Objeto: Bloque PLA 30x15, objetivo: 15.0mm)
+
+Evaluación: ✗ Proceso no capaz (Cpk < 1.0) - Requiere mejora
+Desviación estándar (peor caso): 2.2612 mm
+
+Resumen por objeto:
+  - Bloque PLA 30x15 (15.0mm): σ=2.2612mm, Cpk=-0.11
+  - Botella PET (50.0mm): σ=0.1789mm, Cpk=0.71
+  - Cilindro Al 20mm (20.0mm): σ=0.1864mm, Cpk=0.74
+  - Tubo de ensayo (10.0mm): σ=0.1808mm, Cpk=0.76
+
+======================================================================
+6. DESEMPEÑO POR TIPO DE OBJETO
+======================================================================
+
+Tubo de ensayo (50g):
+  - Pruebas: 22
+  - Éxito: 95.5%
+  - Fuerza media: 5.377N
+  - Tiempo medio: 332.4ms
+
+Bloque PLA 30x15 (120g):
+  - Pruebas: 28
+  - Éxito: 85.7%
+  - Fuerza media: 4.937N
+  - Tiempo medio: 325.4ms
+
+Cilindro Al 20mm (250g):
+  - Pruebas: 30
+  - Éxito: 93.3%
+  - Fuerza media: 6.305N
+  - Tiempo medio: 327.1ms
+
+Botella PET (530g):
+  - Pruebas: 20
+  - Éxito: 95.0%
+  - Fuerza media: 5.968N
+  - Tiempo medio: 330.9ms
+
+======================================================================
+7. RECOMENDACIONES
+======================================================================
+⚠ Mejorar tasa de éxito: revisar setpoints de fuerza bajos
+⚠ Optimizar tiempo de respuesta
+⚠ Mejorar repetibilidad (Cpk objetivo: 1.33)
+
+======================================================================
+8. ANÁLISIS ANOVA - DIFERENCIAS ENTRE TIPOS DE PRUEBA
+======================================================================
+
+Fuerza_Medida_N:
+  - Estadístico F: 0.0004
+  - Valor p: 0.999989
+  - Significativo: No
+  - Grupos analizados: 4
+  - Interpretación: No hay diferencias significativas entre grupos
+  - Estadísticas por tipo de prueba:
+    • Fuerza: n=25, μ=5.642, σ=2.221
+    • Repetibilidad: n=25, μ=5.658, σ=2.220
+    • Slip: n=25, μ=5.658, σ=2.211
+    • Tiempo: n=25, μ=5.644, σ=2.199
+
+Tiempo_Respuesta_ms:
+  - Estadístico F: 1.8814
+  - Valor p: 0.137866
+  - Significativo: No
+  - Grupos analizados: 4
+  - Interpretación: No hay diferencias significativas entre grupos
+  - Estadísticas por tipo de prueba:
+    • Fuerza: n=25, μ=331.360, σ=14.748
+    • Repetibilidad: n=25, μ=329.160, σ=12.605
+    • Slip: n=25, μ=330.040, σ=10.265
+    • Tiempo: n=25, μ=323.600, σ=11.754
+
+Overshoot_pct:
+  - Estadístico F: 0.2384
+  - Valor p: 0.869383
+  - Significativo: No
+  - Grupos analizados: 4
+  - Interpretación: No hay diferencias significativas entre grupos
+  - Estadísticas por tipo de prueba:
+    • Fuerza: n=25, μ=-2.288, σ=3.433
+    • Repetibilidad: n=25, μ=-1.660, σ=2.937
+    • Slip: n=25, μ=-1.604, σ=3.223
+    • Tiempo: n=25, μ=-2.010, σ=3.497
+
+Error_Fuerza_N:
+  - Estadístico F: 0.3018
+  - Valor p: 0.824049
+  - Significativo: No
+  - Grupos analizados: 4
+  - Interpretación: No hay diferencias significativas entre grupos
+  - Estadísticas por tipo de prueba:
+    • Fuerza: n=25, μ=-0.558, σ=0.080
+    • Repetibilidad: n=25, μ=-0.542, σ=0.072
+    • Slip: n=25, μ=-0.542, σ=0.087
+    • Tiempo: n=25, μ=-0.556, σ=0.077
+
+======================================================================
+9. ANÁLISIS DE DISTRIBUCIÓN NORMAL Y CONTROL ESTADÍSTICO
+======================================================================
+
+Fuerza_Medida_N:
+  - n: 100
+  - Media: 5.6505
+  - Desviación estándar: 2.1789
+  - Límites de control (±3σ): [-0.8862, 12.1872]
+  - Casos fuera de ±3σ: 0 (0.00%)
+  - Test Shapiro-Wilk: W=0.9533, p=0.0014 → No
+  - Test D'Agostino: stat=34.4023, p=0.0000 → No
+  - Interpretación: Dentro de control estadístico. Distribución NO normal - considerar transformaciones.
+
+Tiempo_Respuesta_ms:
+  - n: 100
+  - Media: 328.5400
+  - Desviación estándar: 12.6143
+  - Límites de control (±3σ): [290.6972, 366.3828]
+  - Casos fuera de ±3σ: 0 (0.00%)
+  - Test Shapiro-Wilk: W=0.9882, p=0.5226 → Sí
+  - Test D'Agostino: stat=1.4881, p=0.4752 → Sí
+  - Interpretación: Dentro de control estadístico. Distribución aproximadamente normal.
+
+Overshoot_pct:
+  - n: 100
+  - Media: -1.8904
+  - Desviación estándar: 3.2417
+  - Límites de control (±3σ): [-11.6155, 7.8348]
+  - Casos fuera de ±3σ: 0 (0.00%)
+  - Test Shapiro-Wilk: W=0.9560, p=0.0021 → No
+  - Test D'Agostino: stat=11.2627, p=0.0036 → No
+  - Interpretación: Dentro de control estadístico. Distribución NO normal - considerar transformaciones.
+
+Error_Fuerza_N:
+  - n: 100
+  - Media: -0.5495
+  - Desviación estándar: 0.0783
+  - Límites de control (±3σ): [-0.7845, -0.3145]
+  - Casos fuera de ±3σ: 0 (0.00%)
+  - Test Shapiro-Wilk: W=0.9512, p=0.0010 → No
+  - Test D'Agostino: stat=2.7039, p=0.2587 → Sí
+  - Interpretación: Dentro de control estadístico. Distribución aproximadamente normal.
+
+======================================================================
+Fin del reporte
+======================================================================

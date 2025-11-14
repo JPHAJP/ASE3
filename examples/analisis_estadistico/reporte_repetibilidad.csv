@@ -1,0 +1,5 @@
+﻿Objeto,Posicion_Objetivo_mm,n,Media_mm,Std_mm,Min_mm,Max_mm,Rango_mm,Sesgo_mm,Cpk_(±0.5mm)
+Bloque PLA 30x15,15.0,5,13.74,2.2612,9.7,14.9,5.2,-1.26,-0.112
+Botella PET,50.0,5,49.88,0.1789,49.8,50.2,0.4,-0.12,0.708
+Cilindro Al 20mm,20.0,7,19.914,0.1864,19.6,20.1,0.5,-0.086,0.741
+Tubo de ensayo,10.0,8,9.913,0.1808,9.6,10.1,0.5,-0.087,0.761

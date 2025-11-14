@@ -1,0 +1,5 @@
+﻿Tipo_Prueba,n_pruebas,Tasa_Exito_%,Fuerza_Media_N,Fuerza_Std_N,Tiempo_Media_ms,Tiempo_Std_ms,Overshoot_Media_%
+Fuerza,25,92.0,5.642,2.221,331.4,14.7,-2.29
+Repetibilidad,25,92.0,5.658,2.22,329.2,12.6,-1.66
+Slip,25,92.0,5.658,2.211,330.0,10.3,-1.6
+Tiempo,25,92.0,5.644,2.199,323.6,11.8,-2.01
