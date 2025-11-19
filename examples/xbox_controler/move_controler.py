@@ -8,7 +8,7 @@ import rtde_io
 import threading
 
 class XboxUR5eController:
-    def __init__(self, robot_ip="192.168.1.1"):
+    def __init__(self, robot_ip="192.168.0.101"):
         # Inicialización de pygame para control Xbox
         pygame.init()
         pygame.joystick.init()

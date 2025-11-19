@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 class RobotWebApp:
     def __init__(self):
         """Inicializar la aplicación web del robot"""
-        self.robot_ip = "192.168.1.1"  # Cambiar por la IP real del robot
+        self.robot_ip = "192.168.0.101"  # IP del robot en la red ethernet
         self.esp32_mac = "88:13:BF:70:40:72"  # Cambiar por la MAC real del ESP32
         
         # Estado de la aplicación
