@@ -51,6 +51,19 @@ class RobotController {
         this.socket.on('new_log', (logEntry) => {
             this.displayLogEntry(logEntry);
         });
+        
+        // Eventos específicos para Xbox controller
+        this.socket.on('xbox_button_event', (event) => {
+            this.handleXboxButtonEvent(event);
+        });
+        
+        this.socket.on('xbox_mode_change', (data) => {
+            this.handleXboxModeChange(data);
+        });
+        
+        this.socket.on('xbox_status_change', (data) => {
+            this.handleXboxStatusChange(data);
+        });
     }
 
     // Actualizar valores de sliders
@@ -171,6 +184,62 @@ class RobotController {
             this.currentPosition.rz = data.position[5];
             this.updateCurrentPositionDisplay();
         }
+    }
+
+    // Manejar eventos de botones Xbox
+    handleXboxButtonEvent(event) {
+        const action = event.action;
+        const buttonName = event.button_name;
+        
+        // Mostrar notificación visual para ciertas acciones importantes
+        if (action === 'emergency_stop') {
+            this.addLogMessage(`🚨 PARADA DE EMERGENCIA - Botón ${buttonName}`, 'error');
+            this.showNotification('Parada de emergencia activada', 'danger');
+        } else if (action === 'go_home') {
+            this.addLogMessage(`🏠 Ir a Home - Botón ${buttonName}`, 'action');
+        } else if (action === 'mode_change') {
+            this.addLogMessage(`🔄 Cambio de modo - Botón ${buttonName}`, 'action');
+        } else if (action === 'speed_increase' || action === 'speed_decrease') {
+            const level = action === 'speed_increase' ? event.new_level + 1 : event.new_level + 1;
+            this.addLogMessage(`⚡ Velocidad nivel ${level} - Botón ${buttonName}`, 'action');
+        }
+    }
+
+    // Manejar cambio de modo Xbox
+    handleXboxModeChange(data) {
+        this.addLogMessage(`🎮 Xbox modo: ${data.old_mode} → ${data.new_mode}`, 'action');
+    }
+
+    // Manejar cambio de estado Xbox
+    handleXboxStatusChange(data) {
+        // Este método puede expandirse según necesidades futuras
+        console.log('Xbox status change:', data);
+    }
+
+    // Mostrar notificación temporal
+    showNotification(message, type = 'info') {
+        // Crear elemento de notificación
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = `
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+        `;
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remover después de 5 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
     }
 
     // Actualizar display de posición actual

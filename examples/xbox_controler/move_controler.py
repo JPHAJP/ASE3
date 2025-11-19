@@ -855,7 +855,7 @@ class XboxUR5eController:
 def main():
    """Función principal con manejo de errores mejorado"""
    # IP del robot UR5e (cambiar según tu configuración)
-   robot_ip = "192.168.1.1"
+   robot_ip = "192.168.0.101"
    
    print("🤖 Iniciando controlador Xbox-UR5e...")
    print(f"📡 IP del robot: {robot_ip}")
