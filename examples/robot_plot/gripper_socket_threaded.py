@@ -4,7 +4,7 @@ import time
 import queue
 from datetime import datetime
 
-HOST = "192.168.0.102"
+HOST = "192.168.0.100"
 PORT = 23
 
 class GripperSocketMonitor:

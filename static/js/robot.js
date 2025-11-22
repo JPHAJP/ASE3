@@ -21,6 +21,9 @@ class RobotController {
         this.setupEventListeners();
         this.setupSocketListeners();
         
+        // Actualizar estado Xbox periódicamente
+        setInterval(() => this.updateXboxStatus(), 5000); // Cada 5 segundos
+        
         console.log('✅ RobotController inicializado');
     }
 
@@ -440,33 +443,53 @@ class RobotController {
         });
     }
 
-    // Toggle modo de control
-    toggleControlMode() {
-        const toggle = document.getElementById('controlToggle');
-        const modeText = document.getElementById('controlMode');
-        
-        this.isXboxMode = !this.isXboxMode;
-        
-        const mode = this.isXboxMode ? 'xbox' : 'coordinates';
-        
-        fetch('/api/control-mode', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ mode: mode })
-        })
+    // Actualizar estado de control (Xbox siempre activo)
+    updateControlStatus() {
+        // Xbox está siempre habilitado, solo actualizamos estado visual
+        this.addLogMessage('Control Xbox funcionando en paralelo con la interfaz web', 'info');
+        this.updateXboxStatus();
+    }
+
+    // Actualizar estado de Xbox
+    updateXboxStatus() {
+        fetch('/api/xbox/status')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                if (toggle) {
-                    toggle.classList.toggle('active', this.isXboxMode);
+                const status = data.status;
+                
+                // Actualizar badge de estado
+                const xboxStatus = document.getElementById('xboxStatus');
+                const xboxMode = document.getElementById('xboxMode');
+                const xboxControlStatus = document.getElementById('xboxControlStatus');
+                
+                if (xboxStatus) {
+                    if (status.connected) {
+                        xboxStatus.textContent = 'Conectado';
+                        xboxStatus.className = 'badge bg-success';
+                    } else {
+                        xboxStatus.textContent = 'Desconectado';
+                        xboxStatus.className = 'badge bg-secondary';
+                    }
                 }
-                if (modeText) {
-                    modeText.textContent = this.isXboxMode ? 'Xbox Controller' : 'Coordenadas';
+                
+                if (xboxMode) {
+                    xboxMode.textContent = status.control_mode || 'Joint';
                 }
-                this.addLogMessage(`Modo cambiado a: ${this.isXboxMode ? 'Xbox Controller' : 'Coordenadas'}`, 'action');
+                
+                if (xboxControlStatus) {
+                    if (status.xbox_running) {
+                        xboxControlStatus.textContent = 'Xbox: Activo';
+                        xboxControlStatus.className = 'badge bg-success';
+                    } else {
+                        xboxControlStatus.textContent = 'Xbox: Habilitado';
+                        xboxControlStatus.className = 'badge bg-warning';
+                    }
+                }
             }
+        })
+        .catch(error => {
+            console.error('Error obteniendo estado Xbox:', error);
         });
     }
 
@@ -590,9 +613,9 @@ window.clearLog = function() {
     }
 };
 
-window.toggleControlMode = function() {
+window.updateControlStatus = function() {
     if (robotController) {
-        robotController.toggleControlMode();
+        robotController.updateControlStatus();
     }
 };
 

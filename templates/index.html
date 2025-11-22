@@ -1211,16 +1211,14 @@
                             </div>
                         </div>
 
-                        <!-- Modo de Control -->
+                        <!-- Información de Control -->
                         <div>
-                            <h6 class="text-primary">Modo de Control</h6>
-                            <div class="d-flex align-items-center justify-content-center">
-                                <span class="me-3">Coordenadas</span>
-                                <div class="toggle-switch" id="controlToggle" onclick="toggleControlMode()">
-                                    <div class="toggle-slider"></div>
-                                </div>
-                                <span class="ms-3">Xbox Controller</span>
+                            <h6 class="text-primary">Estado de Control</h6>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span>Interfaz Web: Activa</span>
+                                <span id="xboxControlStatus" class="badge bg-success">Xbox: Habilitado</span>
                             </div>
+                            <small class="text-muted">El control Xbox funciona en paralelo con la interfaz web</small>
                         </div>
                     </div>
                 </div>
@@ -1410,7 +1408,10 @@
                             </div>
                             <div class="col-4">
                                 <h6>Xbox Controller</h6>
-                                <p class="mb-0">Modo: <span id="controlMode">Coordenadas</span></p>
+                                <p class="mb-0">
+                                    Estado: <span id="xboxStatus" class="badge bg-secondary">Desconectado</span><br>
+                                    <small>Modo: <span id="xboxMode">Joint</span></small>
+                                </p>
                             </div>
                             <div class="col-4">
                                 <h6>Gripper</h6>

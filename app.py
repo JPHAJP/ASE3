@@ -673,36 +673,29 @@ def update_gripper_config():
 
 @app.route('/api/control-mode', methods=['POST'])
 def toggle_control_mode():
-    """Cambiar modo de control"""
+    """Cambiar modo de control (simplificado - Xbox siempre habilitado)"""
     try:
         data = request.get_json()
-        mode = data['mode']  # 'coordinates' o 'xbox'
+        mode = data['mode']  # 'coordinates' solamente, Xbox está siempre activo
         
         with robot_app.state_lock:
             old_mode = robot_app.app_state['control_mode']
             robot_app.app_state['control_mode'] = mode
         
-        # Manejar activación/desactivación del control Xbox
-        if mode == 'xbox' and robot_app.ur5_controller:
-            # Activar control Xbox integrado
-            success = robot_app.ur5_controller.enable_xbox_control()
-            if not success:
-                robot_app.add_log_message("❌ Error habilitando control Xbox", "error")
-                return jsonify({'success': False, 'message': 'Error habilitando control Xbox'}), 500
-            
-            robot_app.add_log_message("🎮 Control Xbox habilitado", "action")
-            
-        elif old_mode == 'xbox' and robot_app.ur5_controller:
-            # Desactivar control Xbox integrado
-            robot_app.ur5_controller.disable_xbox_control()
-            robot_app.add_log_message("🎮 Control Xbox deshabilitado", "action")
+        robot_app.add_log_message(f"Modo de interfaz cambiado: {old_mode} -> {mode}", "action")
         
-        robot_app.add_log_message(f"Modo de control cambiado: {old_mode} -> {mode}", "action")
+        # El control Xbox funciona en paralelo siempre
+        if robot_app.ur5_controller and robot_app.ur5_controller.is_xbox_enabled():
+            robot_app.add_log_message("🎮 Control Xbox funcionando en paralelo", "info")
         
         # Emitir estado actualizado por WebSocket
         socketio.emit('status_update', robot_app.app_state)
         
-        return jsonify({'success': True, 'message': f'Modo cambiado a {mode}'})
+        return jsonify({
+            'success': True, 
+            'message': f'Modo de interfaz: {mode}',
+            'xbox_status': robot_app.ur5_controller.get_xbox_status() if robot_app.ur5_controller else None
+        })
     
     except Exception as e:
         robot_app.add_log_message(f"Error cambiando modo de control: {str(e)}", "error")
@@ -710,7 +703,7 @@ def toggle_control_mode():
 
 @app.route('/api/xbox/status')
 def get_xbox_status():
-    """Obtener estado del Xbox controller"""
+    """Obtener estado del Xbox controller (siempre habilitado)"""
     try:
         if robot_app.ur5_controller:
             # Usar la funcionalidad Xbox integrada en UR5Controller
@@ -721,14 +714,15 @@ def get_xbox_status():
             combined_status = {
                 'connected': status.get('xbox_connected', False),
                 'robot_connected': robot_status.get('connected', False),
-                'xbox_control_enabled': status.get('xbox_enabled', False),
+                'xbox_control_enabled': status.get('xbox_enabled', True),  # Siempre habilitado
+                'xbox_running': status.get('xbox_running', False),
                 'control_mode': status.get('control_mode', 'joint'),
-                'speed_level': robot_status.get('speed_level', 1),
-                'speed_percentage': robot_status.get('speed_percentage', 30),
+                'speed_level': status.get('speed_level', 1),
+                'speed_percentage': status.get('speed_percent', 30),
                 'debug_mode': status.get('debug_mode', False),
                 'emergency_stop': robot_status.get('emergency_stop_active', False),
                 'movement_active': robot_status.get('movement_active', False),
-                'controller_name': 'Integrado en UR5Controller',
+                'controller_name': 'Integrado en UR5Controller (Siempre Activo)',
                 'current_position': robot_status.get('current_position', None)
             }
             
@@ -743,7 +737,8 @@ def get_xbox_status():
                 'status': {
                     'connected': False,
                     'robot_connected': False,
-                    'xbox_control_enabled': False,
+                    'xbox_control_enabled': True,  # Conceptualmente siempre habilitado
+                    'xbox_running': False,
                     'control_mode': 'joint',
                     'speed_level': 1,
                     'speed_percentage': 30,
@@ -758,131 +753,56 @@ def get_xbox_status():
         logger.error(f"Error obteniendo estado Xbox: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/xbox/toggle', methods=['POST'])
-def toggle_xbox_control():
-    """Habilitar/Deshabilitar control Xbox directo"""
+@app.route('/api/xbox/check-controllers')
+def check_xbox_controllers():
+    """Verificar qué controles Xbox están conectados (solo informativo)"""
     try:
-        if robot_app.ur5_controller:
-            success = robot_app.ur5_controller.toggle_xbox_control()
-            status = robot_app.ur5_controller.get_xbox_status()
-            
-            action = "habilitado" if status['xbox_enabled'] else "deshabilitado"
-            message = f"Control Xbox {action} exitosamente"
-            
-            robot_app.add_log_message(f"🎮 {message}", "action")
-            
-            return jsonify({
-                'success': success,
-                'message': message,
-                'status': status
-            })
-        else:
-            return jsonify({
-                'success': False, 
-                'message': 'Controlador UR5 no disponible'
-            }), 400
-            
+        import pygame
+        pygame.init()
+        pygame.joystick.init()
+        
+        controller_count = pygame.joystick.get_count()
+        controllers = []
+        
+        if controller_count > 0:
+            for i in range(controller_count):
+                try:
+                    joystick = pygame.joystick.Joystick(i)
+                    joystick.init()
+                    controllers.append({
+                        'index': i,
+                        'name': joystick.get_name(),
+                        'buttons': joystick.get_numbuttons(),
+                        'axes': joystick.get_numaxes(),
+                        'hats': joystick.get_numhats()
+                    })
+                    joystick.quit()
+                except Exception as e:
+                    logger.warning(f"Error inicializando control {i}: {e}")
+                    controllers.append({
+                        'index': i,
+                        'name': f'Controller {i}',
+                        'error': str(e)
+                    })
+        
+        pygame.quit()
+        
+        return jsonify({
+            'success': True,
+            'controller_count': controller_count,
+            'controllers': controllers,
+            'auto_xbox_enabled': robot_app.ur5_controller.is_xbox_enabled() if robot_app.ur5_controller else False,
+            'message': f"Se encontraron {controller_count} controles conectados" if controller_count > 0 else "No se encontraron controles conectados"
+        })
+        
     except Exception as e:
-        logger.error(f"Error toggling Xbox control: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/xbox/enable', methods=['POST'])
-def enable_xbox_control():
-    """Habilitar control Xbox directo"""
-    try:
-        if robot_app.ur5_controller:
-            success = robot_app.ur5_controller.enable_xbox_control()
-            status = robot_app.ur5_controller.get_xbox_status()
-            
-            if success:
-                message = "Control Xbox habilitado exitosamente"
-                robot_app.add_log_message(f"🎮 {message}", "action")
-                return jsonify({
-                    'success': True,
-                    'message': message,
-                    'status': status
-                })
-            else:
-                message = "Error habilitando control Xbox"
-                return jsonify({
-                    'success': False,
-                    'message': message,
-                    'status': status
-                }), 400
-        else:
-            return jsonify({
-                'success': False, 
-                'message': 'Controlador UR5 no disponible'
-            }), 400
-            
-    except Exception as e:
-        logger.error(f"Error enabling Xbox control: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/xbox/disable', methods=['POST'])
-def disable_xbox_control():
-    """Deshabilitar control Xbox directo"""
-    try:
-        if robot_app.ur5_controller:
-            success = robot_app.ur5_controller.disable_xbox_control()
-            status = robot_app.ur5_controller.get_xbox_status()
-            
-            message = "Control Xbox deshabilitado exitosamente"
-            robot_app.add_log_message(f"🎮 {message}", "action")
-            
-            return jsonify({
-                'success': success,
-                'message': message,
-                'status': status
-            })
-        else:
-            return jsonify({
-                'success': False, 
-                'message': 'Controlador UR5 no disponible'
-            }), 400
-            
-    except Exception as e:
-        logger.error(f"Error disabling Xbox control: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/xbox/direct-status')
-def get_xbox_direct_status():
-    """Obtener estado del control Xbox directo desde UR5Controller"""
-    try:
-        if robot_app.ur5_controller:
-            status = robot_app.ur5_controller.get_xbox_status()
-            robot_status = robot_app.ur5_controller.get_robot_status()
-            
-            # Combinar información
-            combined_status = {
-                **status,
-                'robot_connected': robot_status['connected'],
-                'can_control_robot': robot_status['can_control'],
-                'emergency_stop': robot_status['emergency_stop_active'],
-                'movement_active': robot_status['movement_active'],
-                'current_position': robot_status['current_position'],
-                'speed_level': robot_status['speed_level'],
-                'speed_percentage': robot_status['speed_percentage']
-            }
-            
-            return jsonify({
-                'success': True,
-                'status': combined_status
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Controlador UR5 no disponible',
-                'status': {
-                    'xbox_enabled': False,
-                    'xbox_connected': False,
-                    'control_mode': None,
-                    'debug_mode': False
-                }
-            })
-    except Exception as e:
-        logger.error(f"Error obteniendo estado Xbox directo: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        logger.error(f"Error verificando controles: {e}")
+        return jsonify({
+            'success': False, 
+            'message': str(e),
+            'controller_count': 0,
+            'controllers': []
+        }), 500
 
 @app.route('/api/routines/<int:routine_id>', methods=['POST'])
 def run_routine(routine_id):

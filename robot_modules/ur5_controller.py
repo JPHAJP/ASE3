@@ -40,28 +40,33 @@ class UR5WebController:
         self.receive = None
         self.io = None
         
-        # Parámetros de movimiento
+        # Parámetros de movimiento - Usando valores de move_controler.py
         self.joint_speed = 2.0
         self.joint_accel = 3.0
         self.linear_speed = 0.5
         self.linear_accel = 1.5
         
-        # Configuración de velocidades
+        # NUEVO: Parámetros de blend radius para movimientos suaves
+        self.joint_blend_radius = 0.02  # metros
+        self.linear_blend_radius = 0.005  # metros
+        
+        # Configuración de velocidades (múltiples niveles)
         self.speed_levels = [0.1, 0.3, 0.5, 0.8, 1.0]
-        self.current_speed_level = 1
+        self.current_speed_level = 1  # Iniciado en nivel 2 (30%)
         
         # Estados
         self.connected = False
         self.movement_active = False
         self.emergency_stop_active = False
+        self.emergency_stop_time = 0
         
         # Posición home
         self.home_joint_angles_deg = [-58.49, -78.0, -98.4, -94.67, 88.77, -109.86]
         self.home_joint_angles_rad = np.radians(self.home_joint_angles_deg)
         
-        # Tolerancias
-        self.position_tolerance_joint = 0.005
-        self.position_tolerance_tcp = 0.001
+        # Tolerancias - Mejoradas
+        self.position_tolerance_joint = 0.005  # Más estricta para joints
+        self.position_tolerance_tcp = 0.001   # Más estricta para TCP
         
         # Límites del workspace
         self.UR5E_MAX_REACH = 0.85
@@ -70,26 +75,40 @@ class UR5WebController:
         # Lock para acceso thread-safe
         self.lock = threading.Lock()
         
-        # Control Xbox - Agregado para soporte de gamepad
-        self.xbox_enabled = False
+        # Control Xbox - SIEMPRE HABILITADO - Usando implementación de move_controler.py
+        self.xbox_enabled = True  # SIEMPRE TRUE
         self.joystick = None
         self.xbox_thread = None
         self.xbox_running = False
         self.previous_button_states = {}
-        self.control_mode = "joint"  # "joint" o "linear" para Xbox
+        self.control_mode = "joint"  # "joint" o "linear"
+        
+        # Estados para detección de cambios
+        self.movement_thread = None
+        self.stop_movement = False
+        
+        # Control de tiempo para evitar spam de movimientos
         self.last_movement_time = 0
-        self.movement_cooldown = 0.05
-        self.joint_increment = 0.05
-        self.linear_increment = 0.008
+        self.movement_cooldown = 0.05  # 50ms entre movimientos
+        
+        # Incrementos para movimientos - REDUCIDOS para mayor precisión
+        self.joint_increment = 0.05  # radianes por paso
+        self.linear_increment = 0.008  # metros por paso
+        
+        # Debug mejorado para botones
+        self.debug_mode = True
         self.last_debug_time = 0
         self.debug_interval = 0.3
-        self.debug_mode = False
         
-        # Intentar conectar
+        # Intentar conectar al robot
         if RTDE_AVAILABLE:
             self.initialize_robot()
         
+        # Inicializar Xbox controller automáticamente
+        self.initialize_xbox_controller()
+        
         logger.info(f"UR5WebController inicializado - IP: {robot_ip}")
+        logger.info(f"🎮 Control Xbox: {'Habilitado' if self.xbox_enabled else 'Deshabilitado'}")
 
     def initialize_robot(self):
         """Inicializar conexión con el robot UR5e mediante RTDE"""
@@ -536,88 +555,67 @@ class UR5WebController:
                 with self.lock:
                     self.movement_active = False
 
-    # ========== FUNCIONES PARA CONTROL XBOX ==========
+    # ========== FUNCIONES PARA CONTROL XBOX - SIEMPRE HABILITADO ==========
     
     def initialize_xbox_controller(self):
-        """Inicializar el control Xbox"""
+        """Inicializar el control Xbox - SIEMPRE HABILITADO"""
         if not PYGAME_AVAILABLE:
-            logger.error("pygame no está disponible para control Xbox")
+            logger.warning("❌ pygame no disponible - Control Xbox deshabilitado")
+            self.xbox_enabled = False
             return False
         
         try:
             pygame.init()
             pygame.joystick.init()
             
+            # Verificar controles conectados
             if pygame.joystick.get_count() == 0:
-                logger.error("No se detectaron controles Xbox conectados")
+                logger.warning("⚠️ No se detectaron controles Xbox conectados")
+                self.xbox_enabled = False
                 return False
             
+            # Conectar al primer control
             self.joystick = pygame.joystick.Joystick(0)
             self.joystick.init()
-            logger.info(f"🎮 Control Xbox conectado: {self.joystick.get_name()}")
-            return True
+            logger.info(f"🎮 Control conectado: {self.joystick.get_name()}")
             
-        except Exception as e:
-            logger.error(f"Error inicializando control Xbox: {e}")
-            return False
-
-    def enable_xbox_control(self):
-        """Habilitar control Xbox"""
-        with self.lock:
-            if self.xbox_enabled:
-                logger.warning("Control Xbox ya está habilitado")
-                return True
+            # Inicializar estados de botones
+            self.previous_button_states = {}
+            for i in range(self.joystick.get_numbuttons()):
+                self.previous_button_states[i] = False
             
-            if not self.initialize_xbox_controller():
-                return False
-            
+            # Iniciar hilo de control Xbox automáticamente
             self.xbox_enabled = True
             self.xbox_running = True
-            
-            # Iniciar hilo de control Xbox
             self.xbox_thread = threading.Thread(target=self._xbox_control_loop, daemon=True)
             self.xbox_thread.start()
             
-            logger.info("🎮 Control Xbox HABILITADO")
+            logger.info("🎮 Control Xbox HABILITADO automáticamente")
             return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error inicializando control Xbox: {e}")
+            self.xbox_enabled = False
+            return False
 
     def disable_xbox_control(self):
-        """Deshabilitar control Xbox"""
+        """Deshabilitar control Xbox temporalmente"""
         with self.lock:
-            if not self.xbox_enabled:
-                logger.warning("Control Xbox ya está deshabilitado")
+            if not self.xbox_running:
                 return True
             
-            self.xbox_enabled = False
             self.xbox_running = False
-            
-            if self.xbox_thread and self.xbox_thread.is_alive():
-                # Esperar a que termine el hilo
-                pass
-            
-            if self.joystick:
-                self.joystick.quit()
-                self.joystick = None
-            
-            if PYGAME_AVAILABLE:
-                pygame.quit()
-            
-            logger.info("🎮 Control Xbox DESHABILITADO")
+            if self.xbox_thread:
+                self.xbox_thread.join(timeout=2)
+            logger.info("🎮 Control Xbox deshabilitado temporalmente")
             return True
 
     def is_xbox_enabled(self):
         """Verificar si el control Xbox está habilitado"""
         return self.xbox_enabled and self.xbox_running
 
-    def toggle_xbox_control(self):
-        """Alternar estado del control Xbox"""
-        if self.xbox_enabled:
-            return self.disable_xbox_control()
-        else:
-            return self.enable_xbox_control()
-
     def _xbox_control_loop(self):
-        """Bucle principal del control Xbox (ejecuta en hilo separado)"""
+        """Bucle principal del control Xbox - IMPLEMENTACIÓN DE move_controler.py"""
         logger.info("🎮 Iniciando bucle de control Xbox...")
         
         try:
@@ -628,14 +626,20 @@ class UR5WebController:
                     break
                 
                 try:
-                    # Procesar eventos de pygame
-                    pygame.event.pump()
-                    
                     # Procesar entrada del control
                     self._process_xbox_input()
                     
-                    # Limitar FPS del bucle
-                    clock.tick(30)  # 30 FPS
+                    # Debug completo cada 2 segundos si hay actividad
+                    current_time = time.time()
+                    if self.debug_mode and current_time - self.last_debug_time > 2.0:
+                        # Solo hacer debug si hay algún input activo
+                        has_input = self._has_active_input()
+                        
+                        if has_input:
+                            self._debug_all_inputs()
+                            self.last_debug_time = current_time
+                    
+                    clock.tick(100)  # 100 FPS para mejor respuesta
                     
                 except Exception as e:
                     logger.error(f"Error en bucle Xbox: {e}")
@@ -646,71 +650,125 @@ class UR5WebController:
         finally:
             logger.info("🎮 Bucle de control Xbox terminado")
 
+    def _has_active_input(self):
+        """Verificar si hay entrada activa del usuario"""
+        if not self.joystick:
+            return False
+            
+        # Verificar botones
+        for i in range(self.joystick.get_numbuttons()):
+            if self.joystick.get_button(i):
+                return True
+        
+        # Verificar ejes analógicos
+        for i in range(self.joystick.get_numaxes()):
+            if abs(self.joystick.get_axis(i)) > 0.1:
+                return True
+        
+        # Verificar D-pad
+        for i in range(self.joystick.get_numhats()):
+            if self.joystick.get_hat(i) != (0, 0):
+                return True
+        
+        return False
+
     def _process_xbox_input(self):
-        """Procesar entrada del control Xbox"""
-        if not self.joystick or self.emergency_stop_active:
-            return
+        """Procesar entrada del control Xbox CON MAPEO CORREGIDO"""
+        pygame.event.pump()
         
         # Procesar botones
         self._process_xbox_buttons()
         
         # Procesar entrada analógica si no hay movimiento activo
-        if not self.movement_active:
+        if not self.movement_active and not self.emergency_stop_active:
             self._process_xbox_analog()
 
     def _process_xbox_buttons(self):
         """Procesar botones del control Xbox"""
+        # MAPEO CORREGIDO según move_controler.py
         button_mapping = {
-            0: "A",    1: "B",    3: "X",    4: "Y",
-            6: "LB",   7: "RB",   10: "Menu", 11: "Start",
-            12: "Xbox", 13: "LS_Click", 14: "RS_Click", 15: "Captura"
+            0: "A",          # Cambiar modo de control
+            1: "B",          # Parada de emergencia  
+            3: "X",          # Ir a home
+            4: "Y",          # Deactivar emergencia
+            6: "LB",         # Velocidad -
+            7: "RB",         # Velocidad +
+            10: "Menu",      # Toggle debug
+            11: "Start",     # Show status
         }
         
         for button_id in range(self.joystick.get_numbuttons()):
             current_state = self.joystick.get_button(button_id)
             previous_state = self.previous_button_states.get(button_id, False)
             
-            # Detectar presión de botón (transición False -> True)
+            # Detectar presión de botón (flanco ascendente)
             if current_state and not previous_state:
                 self._handle_xbox_button_press(button_id)
             
             self.previous_button_states[button_id] = current_state
 
     def _handle_xbox_button_press(self, button_id):
-        """Manejar presión de botones específicos del Xbox"""
-        if button_id == 0:  # Botón A - Cambiar modo
-            if not self.emergency_stop_active:
-                self.control_mode = "linear" if self.control_mode == "joint" else "joint"
-                logger.info(f"🔄 Modo cambiado a: {self.control_mode.upper()}")
+        """Manejar presión de botones específicos del Xbox - MAPEO CORREGIDO"""
+        button_actions = {
+            0: "A",          # Cambiar modo
+            1: "B",          # Emergencia
+            3: "X",          # Home
+            4: "Y",          # Desactivar emergencia
+            6: "LB",         # Velocidad -
+            7: "RB",         # Velocidad +
+            10: "Menu",      # Debug
+            11: "Start",     # Status
+        }
         
-        elif button_id == 1:  # Botón B - Parada de emergencia
-            if self.emergency_stop_active:
-                self.deactivate_emergency_stop()
-            else:
-                self.emergency_stop()
+        button_name = button_actions.get(button_id, f"Btn{button_id}")
+        logger.info(f"🎮 Procesando botón: {button_name} (ID: {button_id})")
         
-        elif button_id == 3:  # Botón X - Ir a Home
-            if not self.emergency_stop_active:
+        if button_id == 0:  # A - Cambiar modo
+            self.control_mode = "linear" if self.control_mode == "joint" else "joint"
+            logger.info(f"🔄 Modo cambiado a: {self.control_mode.upper()}")
+        
+        elif button_id == 1:  # B - Parada de emergencia
+            self.activate_emergency_stop()
+        
+        elif button_id == 3:  # X - Ir a home
+            logger.info("🏠 Moviendo a posición home...")
+            if not self.emergency_stop_active and not self.movement_active:
                 threading.Thread(target=self.go_home, daemon=True).start()
         
+        elif button_id == 4:  # Y - Desactivar emergencia
+            self.deactivate_emergency_stop()
+        
         elif button_id == 6:  # LB - Reducir velocidad
-            if not self.emergency_stop_active:
-                if self.current_speed_level > 0:
-                    self.current_speed_level -= 1
-                    logger.info(f"🔽 Velocidad: {self.speed_levels[self.current_speed_level]*100:.0f}%")
+            if self.current_speed_level > 0:
+                self.current_speed_level -= 1
+                speed_percent = self.speed_levels[self.current_speed_level] * 100
+                logger.info(f"🔽 Velocidad reducida a {speed_percent:.0f}%")
         
         elif button_id == 7:  # RB - Aumentar velocidad
-            if not self.emergency_stop_active:
-                if self.current_speed_level < len(self.speed_levels) - 1:
-                    self.current_speed_level += 1
-                    logger.info(f"🔼 Velocidad: {self.speed_levels[self.current_speed_level]*100:.0f}%")
+            if self.current_speed_level < len(self.speed_levels) - 1:
+                self.current_speed_level += 1
+                speed_percent = self.speed_levels[self.current_speed_level] * 100
+                logger.info(f"🔼 Velocidad aumentada a {speed_percent:.0f}%")
         
-        elif button_id == 10:  # Menu - Toggle debug mode
-            self.debug_mode = not self.debug_mode
-            logger.info(f"🐛 Debug Xbox: {'ON' if self.debug_mode else 'OFF'}")
-        
-        elif button_id == 11:  # Start - Mostrar información
+        elif button_id == 11:  # Start - Mostrar estado
             self._show_xbox_status()
+        
+        elif button_id == 10:  # Menu - Toggle debug
+            self.debug_mode = not self.debug_mode
+            logger.info(f"🐛 Debug: {'ON' if self.debug_mode else 'OFF'}")
+
+    def activate_emergency_stop(self):
+        """Activate emergency stop"""
+        try:
+            if self.control and RTDE_AVAILABLE:
+                self.control.stopJ(2.0)  # Parada suave en articulaciones
+                self.control.stopL(2.0)  # Parada suave lineal
+            self.emergency_stop_active = True
+            self.emergency_stop_time = time.time()
+            self.movement_active = False
+            logger.warning("🚨 PARADA DE EMERGENCIA ACTIVADA")
+        except Exception as e:
+            logger.error(f"Error en parada de emergencia: {e}")
 
     def _process_xbox_analog(self):
         """Procesar entrada analógica del Xbox"""
@@ -720,11 +778,14 @@ class UR5WebController:
         right_x = self.joystick.get_axis(2)
         right_y = self.joystick.get_axis(3)
         
-        # Obtener triggers (intercambiados según el mapeo mencionado)
+        # Obtener triggers CON MAPEO CORREGIDO
+        # Según el mapeo: lt -> rt, rt -> lt
         raw_lt = (self.joystick.get_axis(4) + 1) / 2 if self.joystick.get_numaxes() > 4 else 0
         raw_rt = (self.joystick.get_axis(5) + 1) / 2 if self.joystick.get_numaxes() > 5 else 0
-        left_trigger = raw_rt  # Intercambiados
-        right_trigger = raw_lt
+        
+        # Intercambiar porque están mapeados al revés
+        left_trigger = raw_rt  # Lo que reportas como LT está en RT
+        right_trigger = raw_lt  # Lo que reportas como RT está en LT
         
         # Obtener D-pad
         dpad = self.joystick.get_hat(0) if self.joystick.get_numhats() > 0 else (0, 0)
@@ -732,7 +793,7 @@ class UR5WebController:
         # Aplicar deadzone
         deadzone = 0.2
         def apply_deadzone(value, zone=deadzone):
-            return value if abs(value) > zone else 0
+            return 0 if abs(value) < zone else value
         
         left_x = apply_deadzone(left_x)
         left_y = apply_deadzone(left_y)
@@ -748,175 +809,191 @@ class UR5WebController:
             self._handle_xbox_linear_control(left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad)
 
     def _handle_xbox_joint_control(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad):
-        """Controlar articulaciones con Xbox"""
+        """Controlar articulaciones individuales - MOVIMIENTOS SIMULTÁNEOS SUAVES"""
         movements = []
         
-        # Control de cooldown
-        current_time = time.time()
-        if current_time - self.last_movement_time < self.movement_cooldown:
-            return
-        
-        # Aplicar curva de respuesta suave
+        # Aplicar curva de respuesta más suave
         def smooth_response(value):
-            return np.sign(value) * (value ** 2)
+            return np.sign(value) * (value ** 2) * self.joint_increment
         
         # Joystick izquierdo controla joints 0 y 1
         if abs(left_x) > 0:
-            increment = smooth_response(left_x) * self.joint_increment
-            movements.append((0, increment))
+            movements.append((0, smooth_response(left_x)))
         
         if abs(left_y) > 0:
-            increment = -smooth_response(left_y) * self.joint_increment
-            movements.append((1, increment))
+            movements.append((1, -smooth_response(left_y)))  # Invertir Y
         
         # Joystick derecho controla joints 2 y 3
         if abs(right_y) > 0:
-            increment = -smooth_response(right_y) * self.joint_increment
-            movements.append((2, increment))
+            movements.append((2, -smooth_response(right_y)))  # Invertir Y
         
         if abs(right_x) > 0:
-            increment = smooth_response(right_x) * self.joint_increment
-            movements.append((3, increment))
+            movements.append((3, smooth_response(right_x)))
         
         # Triggers controlan joint 4
         trigger_movement = 0
         if left_trigger > 0:
-            trigger_movement -= left_trigger * self.joint_increment
+            trigger_movement = -left_trigger * self.joint_increment
         if right_trigger > 0:
-            trigger_movement += right_trigger * self.joint_increment
+            trigger_movement = right_trigger * self.joint_increment
         
         if abs(trigger_movement) > 0:
             movements.append((4, trigger_movement))
         
         # D-pad controla joint 5
         if dpad[0] != 0:
-            increment = dpad[0] * self.joint_increment
-            movements.append((5, increment))
+            movements.append((5, dpad[0] * self.joint_increment))
         
         # Ejecutar movimientos
         if movements:
-            self._execute_xbox_joint_movements(movements)
-            self.last_movement_time = current_time
+            self.execute_simultaneous_joint_movements(movements)
 
     def _handle_xbox_linear_control(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad):
-        """Controlar TCP linealmente con Xbox"""
-        movements = []
+       """Controlar movimiento lineal del TCP - MOVIMIENTOS SIMULTÁNEOS SUAVES"""
+       movements = []
+       
+       # Aplicar curva de respuesta más suave
+       def smooth_response(value):
+           return np.sign(value) * (value ** 2) * self.linear_increment
+       
+       # Joystick izquierdo controla X e Y
+       if abs(left_x) > 0:
+           movements.append((0, smooth_response(left_x)))  # X
+       
+       if abs(left_y) > 0:
+           movements.append((1, -smooth_response(left_y)))  # Y (invertir)
+       
+       # Joystick derecho Y controla Z
+       if abs(right_y) > 0:
+           movements.append((2, -smooth_response(right_y)))  # Z (invertir)
+       
+       # Joystick derecho X controla rotación RX
+       if abs(right_x) > 0:
+           movements.append((3, smooth_response(right_x) * 0.1))  # RX (más lento)
+       
+       # Triggers controlan RY
+       trigger_movement = 0
+       if left_trigger > 0:
+           trigger_movement = -left_trigger * self.linear_increment * 0.1
+       if right_trigger > 0:
+           trigger_movement = right_trigger * self.linear_increment * 0.1
+           
+       if abs(trigger_movement) > 0:
+           movements.append((4, trigger_movement))  # RY
+       
+       # D-pad controla RZ
+       if dpad[0] != 0:
+           movements.append((5, dpad[0] * self.linear_increment * 0.1))  # RZ
+       
+       # Ejecutar movimientos
+       if movements:
+           self.execute_simultaneous_tcp_movements(movements)
+
+    def execute_simultaneous_joint_movements(self, movements):
+        """Ejecutar múltiples movimientos articulares simultáneamente"""
+        if self.emergency_stop_active or self.movement_active:
+            return
         
         # Control de cooldown
         current_time = time.time()
         if current_time - self.last_movement_time < self.movement_cooldown:
             return
         
-        # Aplicar curva de respuesta suave
-        def smooth_response(value):
-            return np.sign(value) * (value ** 2)
-        
-        # Joystick izquierdo controla X e Y
-        if abs(left_x) > 0:
-            increment = smooth_response(left_x) * self.linear_increment
-            movements.append((0, increment))
-        
-        if abs(left_y) > 0:
-            increment = -smooth_response(left_y) * self.linear_increment
-            movements.append((1, increment))
-        
-        # Joystick derecho Y controla Z
-        if abs(right_y) > 0:
-            increment = -smooth_response(right_y) * self.linear_increment
-            movements.append((2, increment))
-        
-        # Joystick derecho X controla rotación RX
-        if abs(right_x) > 0:
-            increment = smooth_response(right_x) * self.joint_increment * 0.3
-            movements.append((3, increment))
-        
-        # Triggers controlan RY
-        trigger_movement = 0
-        if left_trigger > 0:
-            trigger_movement -= left_trigger * self.joint_increment * 0.3
-        if right_trigger > 0:
-            trigger_movement += right_trigger * self.joint_increment * 0.3
-        
-        if abs(trigger_movement) > 0:
-            movements.append((4, trigger_movement))
-        
-        # D-pad controla RZ
-        if dpad[0] != 0:
-            increment = dpad[0] * self.joint_increment * 0.3
-            movements.append((5, increment))
-        
-        # Ejecutar movimientos
-        if movements:
-            self._execute_xbox_tcp_movements(movements)
-            self.last_movement_time = current_time
-
-    def _execute_xbox_joint_movements(self, movements):
-        """Ejecutar movimientos articulares desde Xbox"""
-        if not self.can_control() or self.emergency_stop_active:
-            return False
-        
         try:
+            if not self.can_control():
+                return
+            
+            self.movement_active = True
             current_joints = self.get_current_joint_positions()
-            new_joints = list(current_joints)
+            target_joints = current_joints.copy()
             
-            # Aplicar incrementos
-            for joint_index, increment in movements:
-                new_joints[joint_index] += increment
+            # Aplicar todos los movimientos
+            speed_factor = self.speed_levels[self.current_speed_level]
             
-            # Convertir a float de Python
-            new_joints = [float(joint) for joint in new_joints]
+            for joint_idx, increment in movements:
+                if 0 <= joint_idx < 6:
+                    target_joints[joint_idx] += increment * speed_factor
             
-            # Aplicar límites
-            joint_limits = [
-                (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi), (-np.pi, np.pi),
-                (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi)
-            ]
+            # Verificar límites de articulaciones (simplificado)
+            joint_limits = {
+                0: (-6.28, 6.28),    # Base: ±360°
+                1: (-6.28, 6.28),    # Shoulder: ±360° 
+                2: (-3.14, 3.14),    # Elbow: ±180°
+                3: (-6.28, 6.28),    # Wrist 1: ±360°
+                4: (-6.28, 6.28),    # Wrist 2: ±360°
+                5: (-6.28, 6.28)     # Wrist 3: ±360°
+            }
             
-            for i, (min_limit, max_limit) in enumerate(joint_limits):
-                new_joints[i] = max(min_limit, min(max_limit, new_joints[i]))
+            for i, angle in enumerate(target_joints):
+                min_limit, max_limit = joint_limits[i]
+                target_joints[i] = np.clip(angle, min_limit, max_limit)
             
             # Ejecutar movimiento
-            speed = float(self.joint_speed * self.speed_levels[self.current_speed_level])
-            accel = float(self.joint_accel * self.speed_levels[self.current_speed_level])
+            move_speed = self.joint_speed * speed_factor
+            move_accel = self.joint_accel * speed_factor
             
-            return self.control.moveJ(new_joints, speed, accel, True)  # Asíncrono
+            self.control.moveJ(
+                target_joints,
+                speed=move_speed,
+                acceleration=move_accel,
+                asynchronous=True
+            )
+            
+            self.last_movement_time = current_time
             
         except Exception as e:
-            logger.error(f"Error en movimientos Xbox articulares: {e}")
-            return False
+            logger.error(f"Error en movimiento articular: {e}")
+        finally:
+            self.movement_active = False
 
-    def _execute_xbox_tcp_movements(self, movements):
-        """Ejecutar movimientos TCP desde Xbox"""
-        if not self.can_control() or self.emergency_stop_active:
-            return False
+    def execute_simultaneous_tcp_movements(self, movements):
+        """Ejecutar múltiples movimientos TCP simultáneamente"""
+        if self.emergency_stop_active or self.movement_active:
+            return
+        
+        # Control de cooldown
+        current_time = time.time()
+        if current_time - self.last_movement_time < self.movement_cooldown:
+            return
         
         try:
+            if not self.can_control():
+                return
+            
+            self.movement_active = True
             current_pose = self.get_current_tcp_pose()
-            new_pose = list(current_pose)
+            target_pose = current_pose.copy()
             
-            # Aplicar incrementos
-            for axis, increment in movements:
-                new_pose[axis] += increment
+            # Aplicar todos los movimientos
+            speed_factor = self.speed_levels[self.current_speed_level]
             
-            # Convertir a float de Python
-            new_pose = [float(pose) for pose in new_pose]
+            for axis_idx, increment in movements:
+                if 0 <= axis_idx < 6:
+                    target_pose[axis_idx] += increment * speed_factor
             
-            # Verificar workspace para posiciones XYZ
-            if any(axis < 3 for axis, _ in movements):
-                if not self.is_point_within_reach(new_pose[0], new_pose[1], new_pose[2]):
-                    if self.debug_mode:
-                        logger.warning("Posición fuera del workspace")
-                    return False
+            # Verificar límites del workspace para posición
+            x, y, z = target_pose[:3]
+            if not self.is_point_within_reach(x, y, z):
+                logger.warning("Movimiento fuera del workspace")
+                return
             
             # Ejecutar movimiento
-            speed = float(self.linear_speed * self.speed_levels[self.current_speed_level])
-            accel = float(self.linear_accel * self.speed_levels[self.current_speed_level])
+            move_speed = self.linear_speed * speed_factor
+            move_accel = self.linear_accel * speed_factor
             
-            return self.control.moveL(new_pose, speed, accel, True)  # Asíncrono
+            self.control.moveL(
+                target_pose,
+                speed=move_speed,
+                acceleration=move_accel,
+                asynchronous=True
+            )
+            
+            self.last_movement_time = current_time
             
         except Exception as e:
-            logger.error(f"Error en movimientos Xbox TCP: {e}")
-            return False
+            logger.error(f"Error en movimiento TCP: {e}")
+        finally:
+            self.movement_active = False
 
     def _show_xbox_status(self):
         """Mostrar estado del control Xbox"""
@@ -925,12 +1002,48 @@ class UR5WebController:
         logger.info(f"⚡ Velocidad: {self.speed_levels[self.current_speed_level]*100:.0f}%")
         logger.info(f"🚨 Emergencia: {'ACTIVA' if self.emergency_stop_active else 'INACTIVA'}")
         logger.info(f"🔗 Robot conectado: {'SÍ' if self.is_connected() else 'NO'}")
+        logger.info(f"🎮 Xbox habilitado: {'SÍ' if self.xbox_enabled else 'NO'}")
+
+    def _debug_all_inputs(self):
+        """Debug completo de todas las entradas"""
+        if not self.joystick:
+            return
+            
+        logger.debug("🐛 === DEBUG COMPLETO ===")
+        
+        # Botones
+        pressed_buttons = []
+        for i in range(self.joystick.get_numbuttons()):
+            if self.joystick.get_button(i):
+                pressed_buttons.append(f"Btn{i}")
+        
+        if pressed_buttons:
+            logger.debug(f"🔘 Botones: {', '.join(pressed_buttons)}")
+        
+        # Ejes analógicos
+        axes_info = []
+        for i in range(self.joystick.get_numaxes()):
+            value = self.joystick.get_axis(i)
+            if abs(value) > 0.1:
+                axes_info.append(f"Axis{i}: {value:.3f}")
+        
+        if axes_info:
+            logger.debug(f"📊 Ejes: {', '.join(axes_info)}")
+        
+        # D-pad
+        for i in range(self.joystick.get_numhats()):
+            hat = self.joystick.get_hat(i)
+            if hat != (0, 0):
+                logger.debug(f"🎯 D-pad {i}: {hat}")
 
     def get_xbox_status(self):
         """Obtener estado del control Xbox para la interfaz web"""
         return {
             'xbox_enabled': self.xbox_enabled,
             'xbox_connected': self.joystick is not None if self.xbox_enabled else False,
+            'xbox_running': self.xbox_running,
             'control_mode': self.control_mode if self.xbox_enabled else None,
-            'debug_mode': self.debug_mode if self.xbox_enabled else False
+            'debug_mode': self.debug_mode if self.xbox_enabled else False,
+            'speed_level': self.current_speed_level,
+            'speed_percent': self.speed_levels[self.current_speed_level] * 100 if self.current_speed_level < len(self.speed_levels) else 0
         }

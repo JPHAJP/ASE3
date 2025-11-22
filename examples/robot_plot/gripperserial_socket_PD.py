@@ -18,6 +18,7 @@ Script para monitorear y graficar datos de fuerza del ESP32 via Socket
 import socket
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.widgets import Slider, Button
 import re
 import time
 import threading
@@ -260,8 +261,16 @@ class ESP32GripSocketMonitor:
 # Crear monitor
 monitor = ESP32GripSocketMonitor()
 
-# Configurar gráfico
-fig, ax = plt.subplots(figsize=(14, 8))
+# Configurar gráfico con espacio para controles
+fig = plt.figure(figsize=(16, 10))
+
+# Crear grid layout
+gs = fig.add_gridspec(5, 4, hspace=0.3, wspace=0.3, 
+                     height_ratios=[3, 0.3, 0.3, 0.3, 0.3], 
+                     width_ratios=[1, 1, 1, 1])
+
+# Gráfico principal
+ax = fig.add_subplot(gs[0, :])
 line, = ax.plot([], [], 'b-', linewidth=2, marker='o', markersize=2, alpha=0.8)
 ax.set_xlabel('Número de Muestra', fontsize=12, fontweight='bold')
 ax.set_ylabel('Fuerza (gF)', fontsize=12, fontweight='bold')
@@ -275,6 +284,81 @@ ax.set_autoscaley_on(True)
 # Configuración inicial de límites
 ax.set_xlim(0, 50)
 ax.set_ylim(0, TARGET_FORCE * 2)
+
+# ============== CONTROLES PID ================
+# Sliders para PID
+ax_kp = fig.add_subplot(gs[1, :])
+ax_ki = fig.add_subplot(gs[2, :])
+ax_kd = fig.add_subplot(gs[3, :])
+
+slider_kp = Slider(ax_kp, 'KP', 0.0, 5.0, valinit=PID_KP, valstep=0.05, 
+                   valfmt='%.2f', color='red', alpha=0.7)
+slider_ki = Slider(ax_ki, 'KI', 0.0, 5.0, valinit=PID_KI, valstep=0.05, 
+                   valfmt='%.2f', color='green', alpha=0.7)
+slider_kd = Slider(ax_kd, 'KD', 0.0, 5.0, valinit=PID_KD, valstep=0.05, 
+                   valfmt='%.2f', color='blue', alpha=0.7)
+
+# Botones de control
+ax_apply_pid = fig.add_subplot(gs[4, 0])
+ax_tforce = fig.add_subplot(gs[4, 1])
+ax_home = fig.add_subplot(gs[4, 2])
+ax_reset = fig.add_subplot(gs[4, 3])
+
+btn_apply_pid = Button(ax_apply_pid, 'APLICAR\nPID', color='lightgreen', hovercolor='green')
+btn_tforce = Button(ax_tforce, 'START\nTFORCE', color='lightblue', hovercolor='blue')
+btn_home = Button(ax_home, 'HOME', color='orange', hovercolor='darkorange')
+btn_reset = Button(ax_reset, 'RESET', color='red', hovercolor='darkred')
+
+# Variables globales para sliders
+current_kp = PID_KP
+current_ki = PID_KI
+current_kd = PID_KD
+
+# ============== FUNCIONES DE CONTROL ================
+def update_pid_display(val=None):
+    """Actualiza solo la visualización de las ganancias PID sin enviarlas"""
+    global current_kp, current_ki, current_kd
+    
+    current_kp = slider_kp.val
+    current_ki = slider_ki.val
+    current_kd = slider_kd.val
+    
+    # Solo mostrar los valores actuales, no enviar comando
+    print(f"📊 Valores PID actuales - KP: {current_kp:.2f}, KI: {current_ki:.2f}, KD: {current_kd:.2f}")
+
+def apply_pid_gains(event):
+    """Aplica y envía las ganancias PID al dispositivo"""
+    global current_kp, current_ki, current_kd
+    
+    gains_command = f"CONFIG SET GAINS {current_kp:.2f} {current_ki:.2f} {current_kd:.2f}"
+    monitor.send_command(gains_command)
+    print(f"🔧 Ganancias PID aplicadas y enviadas - KP: {current_kp:.2f}, KI: {current_ki:.2f}, KD: {current_kd:.2f}")
+
+def send_home(event):
+    """Envía comando HOME al gripper"""
+    monitor.send_command("MOVE GRIP HOME")
+    print("🏠 Comando HOME enviado")
+
+def start_tforce(event):
+    """Inicia el control de fuerza con TFORCE usando el TARGET_FORCE configurado"""
+    monitor.send_command(f"MOVE GRIP TFORCE {TARGET_FORCE}")
+    print(f"🎯 Iniciando control TFORCE con {TARGET_FORCE} gF")
+
+def reset_data(event):
+    """Reinicia los datos del gráfico"""
+    monitor.force_data.clear()
+    monitor.sample_count = 0
+    monitor.finished = False
+    print("🔄 Datos del gráfico reiniciados")
+
+# Conectar funciones a controles
+slider_kp.on_changed(update_pid_display)
+slider_ki.on_changed(update_pid_display)
+slider_kd.on_changed(update_pid_display)
+btn_apply_pid.on_clicked(apply_pid_gains)
+btn_tforce.on_clicked(start_tforce)
+btn_home.on_clicked(send_home)
+btn_reset.on_clicked(reset_data)
 
 def init():
     """Inicializa el gráfico"""
@@ -356,13 +440,16 @@ def animate(frame):
             window_info = f"(Ventana: últimas {len(y_data)} muestras)" if WINDOW_SIZE > 0 and total_samples > WINDOW_SIZE else ""
             
             title = f'🌐 ESP32 Gripper Socket Monitor | {connection_status} | Total: {monitor.sample_count} muestras {window_info}\n'
-            title += f'📊 Actual: {current_force:.1f} gF | Min: {window_min:.1f} | Max: {window_max:.1f} | Promedio: {window_avg:.1f} gF'
+            title += f'📊 Actual: {current_force:.1f} gF | Min: {window_min:.1f} | Max: {window_max:.1f} | Promedio: {window_avg:.1f} gF\n'
+            title += f'🔧 PID: KP={current_kp:.2f} | KI={current_ki:.2f} | KD={current_kd:.2f}'
             
             ax.set_title(title, fontsize=10, pad=20)
     else:
         # ============ ESTADO INICIAL ============
         connection_status = "🟡 Conectando..." if monitor.connected else "🔴 Sin conexión"
-        ax.set_title(f'{connection_status} a {SOCKET_HOST}:{SOCKET_PORT} - Esperando datos...', fontsize=12)
+        title_init = f'{connection_status} a {SOCKET_HOST}:{SOCKET_PORT} - Esperando datos...\n'
+        title_init += f'🔧 PID: KP={current_kp:.2f} | KI={current_ki:.2f} | KD={current_kd:.2f}'
+        ax.set_title(title_init, fontsize=10)
         ax.set_xlim(0, 50)
         ax.set_ylim(0, TARGET_FORCE * 2)
     
@@ -371,13 +458,19 @@ def animate(frame):
 def main():
     """Función principal"""
     print("=" * 60)
-    print("ESP32 Gripper Force Monitor (Socket)")
+    print("ESP32 Gripper Force Monitor (Socket) - Con Controles PID")
     print("=" * 60)
     print(f"Host: {SOCKET_HOST}")
     print(f"Puerto: {SOCKET_PORT}")
     print(f"Target Force: {TARGET_FORCE} gF")
     print(f"Max Samples: {MAX_SAMPLES if ENABLE_MAX_SAMPLES else 'Ilimitado'}")
-    print(f"PID Gains - KP: {PID_KP}, KI: {PID_KI}, KD: {PID_KD}")
+    print(f"PID Gains Iniciales - KP: {current_kp:.2f}, KI: {current_ki:.2f}, KD: {current_kd:.2f}")
+    print("Controles disponibles:")
+    print("  🎚️ Sliders KP, KI, KD: Ajustar valores (0.00 - 5.00, pasos 0.05)")
+    print("  🔧 Botón APLICAR PID: Enviar nuevas ganancias al dispositivo")
+    print("  � Botón START TFORCE: Iniciar control de fuerza objetivo")
+    print("  �🏠 Botón HOME: Enviar gripper a posición inicial")
+    print("  🔄 Botón RESET: Limpiar datos del gráfico")
     print("=" * 60)
     
     # Validar configuración PID
@@ -394,7 +487,7 @@ def main():
     # Configurar ganancias PID
     print("\n🔧 Configurando ganancias PID...")
     time.sleep(1.0)  # Esperar estabilización
-    gains_command = f"CONFIG SET GAINS {PID_KP} {PID_KI} {PID_KD}"
+    gains_command = f"CONFIG SET GAINS {current_kp:.2f} {current_ki:.2f} {current_kd:.2f}"
     monitor.send_command(gains_command)
     
     # Enviar comando de fuerza objetivo
@@ -413,8 +506,13 @@ def main():
         repeat=True
     )
     
-    print("\n✓ Monitor iniciado... (Cierra la ventana para terminar)")
-    print("🔄 Los comandos se envían de forma no bloqueante\n")
+    print("\n✓ Monitor con controles PID iniciado...")
+    print("🎚️ Usa los sliders para ajustar KP, KI, KD")
+    print("🔧 Presiona 'APLICAR PID' para enviar los nuevos valores")
+    print("� Presiona 'START TFORCE' para iniciar control de fuerza")
+    print("�🏠 Presiona 'HOME' para posición inicial")
+    print("🔄 Presiona 'RESET' para limpiar gráfico")
+    print("❌ Cierra la ventana para terminar\n")
     
     try:
         plt.show()
