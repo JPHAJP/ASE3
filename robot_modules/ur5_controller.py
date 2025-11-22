@@ -89,11 +89,26 @@ class UR5WebController:
         
         # Control de tiempo para evitar spam de movimientos
         self.last_movement_time = 0
-        self.movement_cooldown = 0.05  # 50ms entre movimientos
+        self.last_speed_change = 0  # Control de tiempo para cambios de velocidad
+        self.movement_cooldown = 0.15  # AUMENTADO de 0.08 a 0.15 - reducir frecuencia drásticamente
         
-        # Incrementos para movimientos - REDUCIDOS para mayor precisión
-        self.joint_increment = 0.05  # radianes por paso
-        self.linear_increment = 0.008  # metros por paso
+        # Incrementos para movimientos - REDUCIDOS drásticamente para eliminar vibración
+        self.joint_increment = 0.02  # REDUCIDO de 0.04 a 0.02 - pasos muy pequeños
+        self.linear_increment = 0.003  # REDUCIDO de 0.006 a 0.003 - pasos muy pequeños
+        
+        # NUEVO: Sistema de filtros para suavizar movimientos
+        self.input_filter = {}  # Para filtrar entrada del joystick
+        self.filter_alpha = 0.1  # REDUCIDO de 0.2 a 0.1 - filtrado mucho más agresivo
+        self.movement_accumulator = {}  # Acumulador para movimientos pequeños
+        self.accumulated_movement = [0.0] * 6  # Acumulador de movimientos por eje
+        self.accumulator_threshold = 0.01  # REDUCIDO de 0.02 a 0.01 - menos acumulación = movimientos más frecuentes
+        self.movement_threshold = 0.03  # AUMENTADO de 0.01 a 0.03 - requiere más acumulación
+        
+        # NUEVO: Control de movimientos suaves
+        self.min_movement_threshold = 0.01  # Movimiento mínimo para considerar
+        self.position_check_enabled = True  # Verificar posición antes de mover
+        self.last_position_check = 0
+        self.position_check_interval = 0.1  # 100ms entre verificaciones de posición
         
         # Debug mejorado para botones
         self.debug_mode = True
@@ -771,7 +786,7 @@ class UR5WebController:
             logger.error(f"Error en parada de emergencia: {e}")
 
     def _process_xbox_analog(self):
-        """Procesar entrada analógica del Xbox"""
+        """Procesar entrada analógica del Xbox con filtros avanzados para suavizar"""
         # Obtener valores de joysticks
         left_x = self.joystick.get_axis(0)
         left_y = self.joystick.get_axis(1)
@@ -779,122 +794,207 @@ class UR5WebController:
         right_y = self.joystick.get_axis(3)
         
         # Obtener triggers CON MAPEO CORREGIDO
-        # Según el mapeo: lt -> rt, rt -> lt
         raw_lt = (self.joystick.get_axis(4) + 1) / 2 if self.joystick.get_numaxes() > 4 else 0
         raw_rt = (self.joystick.get_axis(5) + 1) / 2 if self.joystick.get_numaxes() > 5 else 0
         
         # Intercambiar porque están mapeados al revés
-        left_trigger = raw_rt  # Lo que reportas como LT está en RT
-        right_trigger = raw_lt  # Lo que reportas como RT está en LT
+        left_trigger = raw_rt
+        right_trigger = raw_lt
         
         # Obtener D-pad
         dpad = self.joystick.get_hat(0) if self.joystick.get_numhats() > 0 else (0, 0)
         
-        # Aplicar deadzone
-        deadzone = 0.2
-        def apply_deadzone(value, zone=deadzone):
-            return 0 if abs(value) < zone else value
+        # === FILTRADO EXPONENCIAL MEJORADO ===
+        # Alpha más bajo para mayor suavizado
+        left_x = self._apply_input_filter('left_x', left_x)
+        left_y = self._apply_input_filter('left_y', left_y)
+        right_x = self._apply_input_filter('right_x', right_x)
+        right_y = self._apply_input_filter('right_y', right_y)
+        left_trigger = self._apply_input_filter('left_trigger', left_trigger)
+        right_trigger = self._apply_input_filter('right_trigger', right_trigger)
         
-        left_x = apply_deadzone(left_x)
-        left_y = apply_deadzone(left_y)
-        right_x = apply_deadzone(right_x)
-        right_y = apply_deadzone(right_y)
-        left_trigger = left_trigger if left_trigger > 0.1 else 0
-        right_trigger = right_trigger if right_trigger > 0.1 else 0
+        # === DEADZONE MEJORADA CON RAMPA SUAVE ===
+        def apply_smooth_deadzone(value, zone=0.4):  # AUMENTADO de 0.3 a 0.4 - deadzone más amplia
+            """Aplicar deadzone con rampa suave en lugar de corte abrupto"""
+            abs_value = abs(value)
+            if abs_value < zone:
+                return 0.0
+            # Rampa suave: transición gradual desde deadzone hasta valor máximo
+            mapped = (abs_value - zone) / (1.0 - zone)
+            # Curva cúbica para control aún más fino en valores bajos
+            mapped = mapped ** 2.0  # AUMENTADO de 1.5 a 2.0 para respuesta más lenta
+            return mapped * np.sign(value)
         
-        # Procesar según modo
+        left_x = apply_smooth_deadzone(left_x)
+        left_y = apply_smooth_deadzone(left_y)
+        right_x = apply_smooth_deadzone(right_x)
+        right_y = apply_smooth_deadzone(right_y)
+        
+        # Triggers con umbral más alto
+        left_trigger = left_trigger if left_trigger > 0.2 else 0
+        right_trigger = right_trigger if right_trigger > 0.2 else 0
+        
+        # === ACUMULACIÓN TEMPORAL ===
+        # Acumular pequeños movimientos antes de ejecutar
+        self._accumulate_movement(left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad)
+        
+        # Solo ejecutar si hay movimiento acumulado significativo
+        self._execute_accumulated_movement()
+
+    def _accumulate_movement(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad):
+        """Acumular movimientos pequeños antes de ejecutar"""
+        current_time = time.time()
+        
+        # Verificar cooldown más estricto
+        if current_time - self.last_movement_time < self.movement_cooldown:
+            return
+        
         if self.control_mode == "joint":
-            self._handle_xbox_joint_control(left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad)
-        else:
-            self._handle_xbox_linear_control(left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad)
+            # Control articular - usar incrementos ULTRA PEQUEÑOS
+            increment = self.joint_increment * 0.2  # REDUCIDO de 0.4 a 0.2 para incrementos mínimos
+            
+            if abs(left_x) > 0.02:  # AUMENTADO el threshold mínimo de 0.01 a 0.02
+                self.accumulated_movement[0] += left_x * increment
+            if abs(left_y) > 0.02:  # Shoulder  
+                self.accumulated_movement[1] += left_y * increment
+            if abs(right_x) > 0.02:  # Elbow
+                self.accumulated_movement[2] += right_x * increment
+            if abs(right_y) > 0.02:  # Wrist 1
+                self.accumulated_movement[3] += right_y * increment
+            
+            # D-pad para articulaciones 4 y 5 (aún más lento)
+            dpad_increment = increment * 0.2  # REDUCIDO de 0.3 a 0.2
+            if dpad[0] != 0:  # Wrist 2
+                self.accumulated_movement[4] += dpad[0] * dpad_increment
+            if dpad[1] != 0:  # Wrist 3
+                self.accumulated_movement[5] += dpad[1] * dpad_increment
+                
+        else:  # TCP mode
+            # Control lineal - usar incrementos ULTRA PEQUEÑOS
+            linear_inc = self.linear_increment * 0.3  # REDUCIDO de 0.5 a 0.3 para incrementos mínimos
+            
+            if abs(left_x) > 0.02:  # X - AUMENTADO el threshold mínimo
+                self.accumulated_movement[0] += left_x * linear_inc
+            if abs(left_y) > 0.02:  # Y
+                self.accumulated_movement[1] += left_y * linear_inc
+            if abs(right_y) > 0.02:  # Z
+                self.accumulated_movement[2] += right_y * linear_inc
+            if abs(right_x) > 0.02:  # RZ
+                self.accumulated_movement[5] += right_x * 0.01  # REDUCIDO de 0.02 a 0.01
+        
+        # Procesar triggers para velocidad
+        self._handle_speed_triggers(left_trigger, right_trigger)
 
-    def _handle_xbox_joint_control(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad):
-        """Controlar articulaciones individuales - MOVIMIENTOS SIMULTÁNEOS SUAVES"""
+    def _execute_accumulated_movement(self):
+        """Ejecutar movimiento acumulado si supera threshold"""
+        movements_to_execute = []
+        
+        if self.control_mode == "joint":
+            # Threshold AUMENTADO para evitar micro-movimientos
+            threshold = self.movement_threshold * 1.5  # AUMENTADO de 0.8 a 1.5
+            
+            for i in range(6):
+                if abs(self.accumulated_movement[i]) >= threshold:
+                    movements_to_execute.append((i, self.accumulated_movement[i]))
+                    self.accumulated_movement[i] = 0.0  # Reset
+                    
+        else:  # TCP mode
+            # Thresholds AUMENTADOS para posición y rotación
+            for i in range(6):
+                if i < 3:  # Posición X, Y, Z
+                    threshold = 0.008  # AUMENTADO de 0.004 a 0.008
+                else:  # Rotación RX, RY, RZ
+                    threshold = 0.03  # AUMENTADO de 0.015 a 0.03
+                
+                if abs(self.accumulated_movement[i]) >= threshold:
+                    movements_to_execute.append((i, self.accumulated_movement[i]))
+                    self.accumulated_movement[i] = 0.0
+        
+        # Ejecutar movimientos acumulados
+        if movements_to_execute:
+            if self.control_mode == "joint":
+                self.execute_simultaneous_joint_movements(movements_to_execute)
+            else:
+                self.execute_simultaneous_tcp_movements(movements_to_execute)
+
+    def _apply_input_filter(self, input_name, new_value, alpha=None):
+        """Aplicar filtro exponencial mejorado para suavizar entrada"""
+        if alpha is None:
+            alpha = self.filter_alpha
+            
+        if input_name not in self.input_filter:
+            self.input_filter[input_name] = new_value
+            return new_value
+        
+        # Filtro exponencial con detección de cambios grandes
+        previous_value = self.input_filter[input_name]
+        
+        # Si hay un cambio grande (como soltar el joystick), usar alpha más alto
+        # para respuesta más rápida
+        change_magnitude = abs(new_value - previous_value)
+        dynamic_alpha = min(alpha * 2, 0.8) if change_magnitude > 0.5 else alpha
+        
+        filtered_value = (dynamic_alpha * new_value + 
+                         (1 - dynamic_alpha) * previous_value)
+        
+        self.input_filter[input_name] = filtered_value
+        return filtered_value
+
+    def _handle_speed_triggers(self, left_trigger, right_trigger):
+        """Manejar cambios de velocidad con triggers"""
+        current_time = time.time()
+        
+        # Evitar cambios muy frecuentes de velocidad
+        if current_time - self.last_speed_change < 0.3:  # 300ms mínimo entre cambios
+            return
+        
+        if left_trigger > 0.2:
+            new_speed = max(0, self.current_speed_level - 1)
+            if new_speed != self.current_speed_level:
+                self.current_speed_level = new_speed
+                self.last_speed_change = current_time
+                logger.info(f"🔽 Velocidad: {self.current_speed_level * 20 + 10}%")
+                    
+        elif right_trigger > 0.2:
+            new_speed = min(len(self.speed_levels) - 1, self.current_speed_level + 1)
+            if new_speed != self.current_speed_level:
+                self.current_speed_level = new_speed
+                self.last_speed_change = current_time
+                logger.info(f"🔼 Velocidad: {self.current_speed_level * 20 + 10}%")
+
+    def _apply_input_filter(self, input_name, new_value):
+        """Aplicar filtro exponencial para suavizar entrada"""
+        if input_name not in self.input_filter:
+            self.input_filter[input_name] = new_value
+            return new_value
+        
+        # Filtro exponencial: output = alpha * input + (1-alpha) * previous_output
+        filtered_value = (self.filter_alpha * new_value + 
+                         (1 - self.filter_alpha) * self.input_filter[input_name])
+        
+        self.input_filter[input_name] = filtered_value
+        return filtered_value
+
+    def _get_accumulated_tcp_movements(self):
+        """Obtener movimientos TCP acumulados que superen el umbral"""
         movements = []
+        tcp_mapping = {'tcp_x': 0, 'tcp_y': 1, 'tcp_z': 2, 'tcp_rx': 3, 'tcp_ry': 4, 'tcp_rz': 5}
         
-        # Aplicar curva de respuesta más suave
-        def smooth_response(value):
-            return np.sign(value) * (value ** 2) * self.joint_increment
+        for tcp_name, accumulated in list(self.movement_accumulator.items()):
+            if tcp_name.startswith('tcp_') and abs(accumulated) >= self.accumulator_threshold * 0.5:  # Umbral más bajo para TCP
+                axis_idx = tcp_mapping[tcp_name]
+                movements.append((axis_idx, accumulated))
+                # Resetear acumulador
+                self.movement_accumulator[tcp_name] = 0
         
-        # Joystick izquierdo controla joints 0 y 1
-        if abs(left_x) > 0:
-            movements.append((0, smooth_response(left_x)))
-        
-        if abs(left_y) > 0:
-            movements.append((1, -smooth_response(left_y)))  # Invertir Y
-        
-        # Joystick derecho controla joints 2 y 3
-        if abs(right_y) > 0:
-            movements.append((2, -smooth_response(right_y)))  # Invertir Y
-        
-        if abs(right_x) > 0:
-            movements.append((3, smooth_response(right_x)))
-        
-        # Triggers controlan joint 4
-        trigger_movement = 0
-        if left_trigger > 0:
-            trigger_movement = -left_trigger * self.joint_increment
-        if right_trigger > 0:
-            trigger_movement = right_trigger * self.joint_increment
-        
-        if abs(trigger_movement) > 0:
-            movements.append((4, trigger_movement))
-        
-        # D-pad controla joint 5
-        if dpad[0] != 0:
-            movements.append((5, dpad[0] * self.joint_increment))
-        
-        # Ejecutar movimientos
-        if movements:
-            self.execute_simultaneous_joint_movements(movements)
-
-    def _handle_xbox_linear_control(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad):
-       """Controlar movimiento lineal del TCP - MOVIMIENTOS SIMULTÁNEOS SUAVES"""
-       movements = []
-       
-       # Aplicar curva de respuesta más suave
-       def smooth_response(value):
-           return np.sign(value) * (value ** 2) * self.linear_increment
-       
-       # Joystick izquierdo controla X e Y
-       if abs(left_x) > 0:
-           movements.append((0, smooth_response(left_x)))  # X
-       
-       if abs(left_y) > 0:
-           movements.append((1, -smooth_response(left_y)))  # Y (invertir)
-       
-       # Joystick derecho Y controla Z
-       if abs(right_y) > 0:
-           movements.append((2, -smooth_response(right_y)))  # Z (invertir)
-       
-       # Joystick derecho X controla rotación RX
-       if abs(right_x) > 0:
-           movements.append((3, smooth_response(right_x) * 0.1))  # RX (más lento)
-       
-       # Triggers controlan RY
-       trigger_movement = 0
-       if left_trigger > 0:
-           trigger_movement = -left_trigger * self.linear_increment * 0.1
-       if right_trigger > 0:
-           trigger_movement = right_trigger * self.linear_increment * 0.1
-           
-       if abs(trigger_movement) > 0:
-           movements.append((4, trigger_movement))  # RY
-       
-       # D-pad controla RZ
-       if dpad[0] != 0:
-           movements.append((5, dpad[0] * self.linear_increment * 0.1))  # RZ
-       
-       # Ejecutar movimientos
-       if movements:
-           self.execute_simultaneous_tcp_movements(movements)
+        return movements
 
     def execute_simultaneous_joint_movements(self, movements):
-        """Ejecutar múltiples movimientos articulares simultáneamente"""
+        """Ejecutar múltiples movimientos articulares simultáneamente - SUAVIZADO"""
         if self.emergency_stop_active or self.movement_active:
             return
         
-        # Control de cooldown
+        # Control de cooldown más estricto
         current_time = time.time()
         if current_time - self.last_movement_time < self.movement_cooldown:
             return
@@ -903,7 +1003,7 @@ class UR5WebController:
             if not self.can_control():
                 return
             
-            self.movement_active = True
+            # Usar asíncrono para evitar bloqueos
             current_joints = self.get_current_joint_positions()
             target_joints = current_joints.copy()
             
@@ -914,7 +1014,7 @@ class UR5WebController:
                 if 0 <= joint_idx < 6:
                     target_joints[joint_idx] += increment * speed_factor
             
-            # Verificar límites de articulaciones (simplificado)
+            # Verificar límites de articulaciones
             joint_limits = {
                 0: (-6.28, 6.28),    # Base: ±360°
                 1: (-6.28, 6.28),    # Shoulder: ±360° 
@@ -928,30 +1028,47 @@ class UR5WebController:
                 min_limit, max_limit = joint_limits[i]
                 target_joints[i] = np.clip(angle, min_limit, max_limit)
             
-            # Ejecutar movimiento
-            move_speed = self.joint_speed * speed_factor
-            move_accel = self.joint_accel * speed_factor
+            # Parámetros de movimiento ULTRA suaves
+            move_speed = self.joint_speed * speed_factor * 0.3  # REDUCIDO de 0.6 a 0.3 para máxima suavidad
+            move_accel = self.joint_accel * speed_factor * 0.2  # REDUCIDO de 0.4 a 0.2 para máxima suavidad
             
-            self.control.moveJ(
-                target_joints,
-                speed=move_speed,
-                acceleration=move_accel,
-                asynchronous=True
-            )
+            # Usar blend radius aumentado para movimientos más suaves
+            blend_radius = self.joint_blend_radius * 1.5  # REDUCIDO de 2 a 1.5 para evitar sobresuavizado
+            
+            # NUEVO: Usar moveJ con blend radius para suavidad
+            try:
+                self.control.moveJ(
+                    target_joints,
+                    speed=move_speed,
+                    acceleration=move_accel,
+                    asynchronous=True,  # Asíncrono para no bloquear
+                    blend=blend_radius
+                )
+                
+                if self.debug_mode and len(movements) > 1:
+                    joint_names = [f"J{i}" for i, _ in movements]
+                    logger.debug(f"🔄 Movimiento suave joints: {', '.join(joint_names)}")
+                
+            except TypeError:
+                # Fallback si blend no está soportado
+                self.control.moveJ(
+                    target_joints,
+                    speed=move_speed,
+                    acceleration=move_accel,
+                    asynchronous=True
+                )
             
             self.last_movement_time = current_time
             
         except Exception as e:
-            logger.error(f"Error en movimiento articular: {e}")
-        finally:
-            self.movement_active = False
+            logger.error(f"Error en movimiento articular suave: {e}")
 
     def execute_simultaneous_tcp_movements(self, movements):
-        """Ejecutar múltiples movimientos TCP simultáneamente"""
+        """Ejecutar múltiples movimientos TCP simultáneamente - SUAVIZADO"""
         if self.emergency_stop_active or self.movement_active:
             return
         
-        # Control de cooldown
+        # Control de cooldown más estricto
         current_time = time.time()
         if current_time - self.last_movement_time < self.movement_cooldown:
             return
@@ -960,7 +1077,6 @@ class UR5WebController:
             if not self.can_control():
                 return
             
-            self.movement_active = True
             current_pose = self.get_current_tcp_pose()
             target_pose = current_pose.copy()
             
@@ -974,26 +1090,45 @@ class UR5WebController:
             # Verificar límites del workspace para posición
             x, y, z = target_pose[:3]
             if not self.is_point_within_reach(x, y, z):
-                logger.warning("Movimiento fuera del workspace")
+                if self.debug_mode:
+                    logger.warning(f"🚫 Posición fuera del workspace: X={x:.3f}, Y={y:.3f}, Z={z:.3f}")
                 return
             
-            # Ejecutar movimiento
-            move_speed = self.linear_speed * speed_factor
-            move_accel = self.linear_accel * speed_factor
+            # Parámetros de movimiento ULTRA suaves
+            move_speed = self.linear_speed * speed_factor * 0.25  # REDUCIDO de 0.5 a 0.25 para máxima suavidad
+            move_accel = self.linear_accel * speed_factor * 0.15  # REDUCIDO de 0.3 a 0.15 para máxima suavidad
             
-            self.control.moveL(
-                target_pose,
-                speed=move_speed,
-                acceleration=move_accel,
-                asynchronous=True
-            )
+            # Usar blend radius aumentado
+            blend_radius = self.linear_blend_radius * 2  # Mantener triplicado para TCP
+            
+            # NUEVO: Usar moveL con blend radius para suavidad
+            try:
+                self.control.moveL(
+                    target_pose,
+                    speed=move_speed,
+                    acceleration=move_accel,
+                    asynchronous=True,
+                    blend=blend_radius
+                )
+                
+                if self.debug_mode and len(movements) > 1:
+                    axis_names = ['X', 'Y', 'Z', 'RX', 'RY', 'RZ']
+                    moved_axes = [axis_names[i] for i, _ in movements]
+                    logger.debug(f"🔄 Movimiento suave TCP: {', '.join(moved_axes)}")
+                
+            except TypeError:
+                # Fallback si blend no está soportado
+                self.control.moveL(
+                    target_pose,
+                    speed=move_speed,
+                    acceleration=move_accel,
+                    asynchronous=True
+                )
             
             self.last_movement_time = current_time
             
         except Exception as e:
-            logger.error(f"Error en movimiento TCP: {e}")
-        finally:
-            self.movement_active = False
+            logger.error(f"Error en movimiento TCP suave: {e}")
 
     def _show_xbox_status(self):
         """Mostrar estado del control Xbox"""
