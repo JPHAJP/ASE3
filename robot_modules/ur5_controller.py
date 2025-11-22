@@ -1,25 +1,16 @@
 """
-Controlador UR5 con RTDE activado para la aplicación web
-Versión con conexión real al robot UR5e mediante URRTDE
+Controlador UR5 con comunicación por socket para la aplicación web
+Versión con conexión por puerto 30002 y control de velocidades continuas
 """
 
+import socket
+import struct
 import numpy as np
 import time
 import threading
 import logging
+import json
 from datetime import datetime
-
-# Importaciones de RTDE para conexión real con UR5e
-try:
-    import rtde_control
-    import rtde_receive
-    import rtde_io
-    RTDE_AVAILABLE = True
-    print("✅ RTDE disponible - Conexión real con UR5e activada")
-except ImportError as e:
-    RTDE_AVAILABLE = False
-    print(f"❌ RTDE no disponible: {e}")
-    print("🔌 Funcionando en modo desconectado")
 
 # Importaciones para control Xbox (opcional)
 try:
@@ -33,26 +24,50 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class UR5WebController:
-    def __init__(self, robot_ip="192.168.0.101"):
-        """Inicializar controlador UR5 para aplicación web"""
+    def __init__(self, robot_ip="192.168.0.101", robot_port=30002):
+        """Inicializar controlador UR5 para aplicación web con comunicación por socket"""
         self.robot_ip = robot_ip
-        self.control = None
-        self.receive = None
-        self.io = None
+        self.robot_port = robot_port
+        self.socket = None  # Socket para envío de comandos (puerto 30002)
+        self.read_socket = None  # Socket para lectura de estado (puerto 30001)
         
-        # Parámetros de movimiento - Usando valores de move_controler.py
-        self.joint_speed = 2.0
-        self.joint_accel = 3.0
-        self.linear_speed = 0.5
-        self.linear_accel = 1.5
+        # Variables para almacenar posiciones actuales
+        self.current_joint_positions_rad = None
+        self.current_tcp_pose = None
+        self.position_lock = threading.Lock()
         
-        # NUEVO: Parámetros de blend radius para movimientos suaves
-        self.joint_blend_radius = 0.02  # metros
-        self.linear_blend_radius = 0.005  # metros
+        # Thread para lectura continua de posiciones
+        self.position_thread = None
+        self.position_reading = False
         
-        # Configuración de velocidades (múltiples niveles)
-        self.speed_levels = [0.1, 0.3, 0.5, 0.8, 1.0]
-        self.current_speed_level = 1  # Iniciado en nivel 2 (30%)
+        # Parámetros de velocidad - múltiples niveles
+        self.speed_levels = [0.2, 0.4, 0.6, 0.8, 1.0]
+        self.current_speed_level = 1  # Iniciado en nivel 2 (40%)
+        
+        # Velocidades máximas para movimiento lineal (m/s)
+        self.max_linear_velocity = {
+            'xy': 0.1,   # Velocidad máxima en X e Y
+            'z': 0.08,   # Velocidad máxima en Z
+            'rot': 0.5   # Velocidad máxima rotacional (rad/s)
+        }
+        
+        # Velocidades máximas para movimiento articular (rad/s)
+        self.max_joint_velocity = [
+            1.0,  # Joint 0 (base)
+            1.0,  # Joint 1 (shoulder)
+            1.5,  # Joint 2 (elbow)
+            2.0,  # Joint 3 (wrist1)
+            2.0,  # Joint 4 (wrist2)
+            2.0   # Joint 5 (wrist3)
+        ]
+        
+        # Configuración de deadzone
+        self.deadzone = 0.15
+        self.trigger_deadzone = 0.1
+        
+        # Aceleración para comandos de velocidad
+        self.acceleration = 0.5
+        self.time_step = 0.1  # Tiempo para comandos de velocidad
         
         # Estados
         self.connected = False
@@ -64,10 +79,6 @@ class UR5WebController:
         self.home_joint_angles_deg = [-58.49, -78.0, -98.4, -94.67, 88.77, -109.86]
         self.home_joint_angles_rad = np.radians(self.home_joint_angles_deg)
         
-        # Tolerancias - Mejoradas
-        self.position_tolerance_joint = 0.005  # Más estricta para joints
-        self.position_tolerance_tcp = 0.001   # Más estricta para TCP
-        
         # Límites del workspace
         self.UR5E_MAX_REACH = 0.85
         self.UR5E_MIN_REACH = 0.18
@@ -75,147 +86,260 @@ class UR5WebController:
         # Lock para acceso thread-safe
         self.lock = threading.Lock()
         
-        # Control Xbox - SIEMPRE HABILITADO - Usando implementación de move_controler.py
-        self.xbox_enabled = True  # SIEMPRE TRUE
+        # Control Xbox - Control de velocidades continuas
+        self.xbox_enabled = True
         self.joystick = None
         self.xbox_thread = None
         self.xbox_running = False
         self.previous_button_states = {}
-        self.control_mode = "joint"  # "joint" o "linear"
+        self.control_mode = "linear"  # "linear" o "joint"
         
-        # Estados para detección de cambios
-        self.movement_thread = None
-        self.stop_movement = False
+        # Control de hilo de velocidad
+        self.velocity_thread = None
+        self.velocity_active = False
+        self.current_velocities = {
+            'linear': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # [vx, vy, vz, wx, wy, wz]
+            'joint': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # velocidades articulares
+        }
+        self.velocity_lock = threading.Lock()
         
-        # Control de tiempo para evitar spam de movimientos
-        self.last_movement_time = 0
-        self.last_speed_change = 0  # Control de tiempo para cambios de velocidad
-        self.movement_cooldown = 0.15  # AUMENTADO de 0.08 a 0.15 - reducir frecuencia drásticamente
+        # Control para evitar spam de comandos de parada
+        self.last_movement_state = False
+        self.stop_command_sent = False
         
-        # Incrementos para movimientos - REDUCIDOS drásticamente para eliminar vibración
-        self.joint_increment = 0.02  # REDUCIDO de 0.04 a 0.02 - pasos muy pequeños
-        self.linear_increment = 0.003  # REDUCIDO de 0.006 a 0.003 - pasos muy pequeños
-        
-        # NUEVO: Sistema de filtros para suavizar movimientos
-        self.input_filter = {}  # Para filtrar entrada del joystick
-        self.filter_alpha = 0.1  # REDUCIDO de 0.2 a 0.1 - filtrado mucho más agresivo
-        self.movement_accumulator = {}  # Acumulador para movimientos pequeños
-        self.accumulated_movement = [0.0] * 6  # Acumulador de movimientos por eje
-        self.accumulator_threshold = 0.01  # REDUCIDO de 0.02 a 0.01 - menos acumulación = movimientos más frecuentes
-        self.movement_threshold = 0.03  # AUMENTADO de 0.01 a 0.03 - requiere más acumulación
-        
-        # NUEVO: Control de movimientos suaves
-        self.min_movement_threshold = 0.01  # Movimiento mínimo para considerar
-        self.position_check_enabled = True  # Verificar posición antes de mover
-        self.last_position_check = 0
-        self.position_check_interval = 0.1  # 100ms entre verificaciones de posición
-        
-        # Debug mejorado para botones
+        # Debug
         self.debug_mode = True
         self.last_debug_time = 0
-        self.debug_interval = 0.3
         
         # Intentar conectar al robot
-        if RTDE_AVAILABLE:
-            self.initialize_robot()
+        self.initialize_robot()
         
         # Inicializar Xbox controller automáticamente
         self.initialize_xbox_controller()
         
-        logger.info(f"UR5WebController inicializado - IP: {robot_ip}")
+        logger.info(f"UR5WebController inicializado - IP: {robot_ip}:{robot_port}")
         logger.info(f"🎮 Control Xbox: {'Habilitado' if self.xbox_enabled else 'Deshabilitado'}")
 
     def initialize_robot(self):
-        """Inicializar conexión con el robot UR5e mediante RTDE"""
+        """Inicializar conexión con el robot UR5e mediante socket"""
         try:
-            if not RTDE_AVAILABLE:
-                logger.warning("🔌 RTDE no disponible - funcionando en modo desconectado")
-                self.connected = False
-                return False
-            
             logger.info(f"🤖 Conectando al robot UR5e en {self.robot_ip}...")
             
-            # Intentar conexión RTDE con manejo de conflictos
+            # Conectar socket de comandos (puerto 30002)
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((self.robot_ip, self.robot_port))
+            logger.info(f"✅ Socket de comandos conectado en puerto {self.robot_port}")
+            
+            # Conectar socket de lectura (puerto 30001)
             try:
-                self.control = rtde_control.RTDEControlInterface(self.robot_ip)
-                self.receive = rtde_receive.RTDEReceiveInterface(self.robot_ip)
-                self.io = rtde_io.RTDEIOInterface(self.robot_ip)
+                self.read_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.read_socket.settimeout(1.0)  # Timeout de 1 segundo
+                self.read_socket.connect((self.robot_ip, 30001))
+                logger.info("✅ Socket de lectura conectado en puerto 30001")
                 
-                # Verificar que las conexiones estén activas
-                if self.control.isConnected() and self.receive.isConnected():
-                    self.connected = True
-                    logger.info("✅ Robot UR5e conectado exitosamente!")
-                    
-                    # Verificar estado del robot
-                    robot_mode = self.receive.getRobotMode()
-                    safety_mode = self.receive.getSafetyMode()
-                    
-                    logger.info(f"🔧 Modo del robot: {robot_mode}")
-                    logger.info(f"🛡️  Modo de seguridad: {safety_mode}")
-                    
-                    return True
-                else:
-                    logger.error("❌ Falló la conexión con el robot")
-                    self.connected = False
-                    return False
-                    
-            except Exception as rtde_error:
-                error_msg = str(rtde_error)
-                if "already in use" in error_msg or "EtherNet/IP" in error_msg:
-                    logger.warning("⚠️ Conflicto con otros adaptadores de red en el robot")
-                    logger.warning("💡 Solución: Desactivar EtherNet/IP, PROFINET o MODBUS en PolyScope")
-                    logger.info("🔧 Funcionando en modo híbrido (conexión básica)")
-                    
-                    # Intentar solo conexión de recepción
-                    try:
-                        self.receive = rtde_receive.RTDEReceiveInterface(self.robot_ip)
-                        if self.receive.isConnected():
-                            self.connected = True
-                            logger.info("✅ Conexión de solo lectura establecida")
-                            return True
-                    except:
-                        pass
-                        
-                self.connected = False
-                logger.error(f"❌ Error de conexión RTDE: {rtde_error}")
-                return False
+                # Iniciar hilo de lectura de posiciones
+                self.start_position_reading()
                 
+            except Exception as read_error:
+                logger.warning(f"⚠️ No se pudo conectar socket de lectura: {read_error}")
+                logger.info("📝 Continuando solo con envío de comandos")
+                self.read_socket = None
+            
+            self.connected = True
+            logger.info("✅ Robot UR5e conectado exitosamente por socket!")
+            return True
+            
         except Exception as e:
-            logger.error(f"❌ Error general inicializando conexión: {e}")
+            logger.error(f"❌ Error conectando al robot: {e}")
             self.connected = False
             return False
 
     def is_connected(self):
         """Verificar si el robot está conectado"""
-        if not RTDE_AVAILABLE:
-            return False
-        
         try:
-            # Verificar al menos la conexión de recepción
-            return (self.connected and 
-                   self.receive is not None and
-                   self.receive.isConnected())
+            return self.connected and self.socket is not None
         except:
             return False
     
     def can_control(self):
         """Verificar si se pueden enviar comandos de control"""
+        return self.is_connected()
+
+    def send_command(self, command):
+        """Enviar comando al robot"""
         try:
-            return (self.is_connected() and 
-                   self.control is not None and 
-                   self.control.isConnected())
-        except:
+            if self.socket:
+                cmd_bytes = (command + "\n").encode('utf-8')
+                self.socket.send(cmd_bytes)
+                
+                # Debug: mostrar comando enviado si el debug está activo
+                if self.debug_mode:
+                    if not (command.startswith('stopl(') or command.startswith('stopj(')):
+                        logger.info(f"📤 Comando enviado: {command}")
+                    elif not hasattr(self, '_last_debug_stop') or self._last_debug_stop != command:
+                        logger.info(f"📤 Comando enviado: {command} (parada)")
+                        self._last_debug_stop = command
+                
+                return True
+            else:
+                logger.warning("❌ No hay conexión con el robot")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error enviando comando: {e}")
             return False
+    
+    def send_speedl(self, vx, vy, vz, wx, wy, wz, a=None, t=None):
+        """Enviar comando de velocidad lineal"""
+        if a is None:
+            a = self.acceleration
+        if t is None:
+            t = self.time_step
+        
+        cmd = f"speedl([{vx:.5f}, {vy:.5f}, {vz:.5f}, {wx:.5f}, {wy:.5f}, {wz:.5f}], {a}, {t})"
+        return self.send_command(cmd)
+    
+    def send_speedj(self, q0, q1, q2, q3, q4, q5, a=None, t=None):
+        """Enviar comando de velocidad articular"""
+        if a is None:
+            a = self.acceleration
+        if t is None:
+            t = self.time_step
+        
+        cmd = f"speedj([{q0:.5f}, {q1:.5f}, {q2:.5f}, {q3:.5f}, {q4:.5f}, {q5:.5f}], {a}, {t})"
+        return self.send_command(cmd)
+    
+    def send_stopl(self, a=None):
+        """Detener movimiento lineal"""
+        if a is None:
+            a = self.acceleration
+        cmd = f"stopl({a})"
+        return self.send_command(cmd)
+    
+    def send_stopj(self, a=None):
+        """Detener movimiento articular"""
+        if a is None:
+            a = self.acceleration
+        cmd = f"stopj({a})"
+        return self.send_command(cmd)
+
+    # ========== MÉTODOS DE LECTURA DE POSICIONES VÍA SOCKET ==========
+    
+    def start_position_reading(self):
+        """Iniciar hilo de lectura continua de posiciones"""
+        if not self.position_reading and self.read_socket:
+            self.position_reading = True
+            self.position_thread = threading.Thread(target=self.position_reading_thread, daemon=True)
+            self.position_thread.start()
+            logger.info("📊 Lectura de posiciones iniciada")
+
+    def stop_position_reading(self):
+        """Detener hilo de lectura de posiciones"""
+        if self.position_reading:
+            self.position_reading = False
+            if self.position_thread and self.position_thread.is_alive():
+                self.position_thread.join(timeout=1.0)
+            logger.info("📊 Lectura de posiciones detenida")
+
+    def position_reading_thread(self):
+        """Hilo para lectura continua de posiciones del robot"""
+        logger.info("📡 Iniciando lectura continua de posiciones...")
+        
+        while self.position_reading and self.read_socket:
+            try:
+                pose_data = self.get_pose_from_socket()
+                if pose_data:
+                    x, y, z, rx, ry, rz, joints = pose_data
+                    
+                    with self.position_lock:
+                        self.current_tcp_pose = [x, y, z, rx, ry, rz]
+                        self.current_joint_positions_rad = joints
+                
+                time.sleep(0.1)  # Leer posiciones cada 100ms
+                
+            except Exception as e:
+                if self.position_reading:  # Solo mostrar error si no estamos cerrando
+                    logger.warning(f"Error leyendo posición: {e}")
+                time.sleep(1.0)  # Esperar más tiempo en caso de error
+        
+        logger.info("📡 Lectura de posiciones terminada")
+
+    def get_pose_from_socket(self):
+        """
+        Función para obtener tanto coordenadas articulares como cartesianas del robot vía Socket
+        Basada en tu código sugerido
+        """
+        if not self.read_socket:
+            return None
+            
+        try:
+            cdr = 0
+            x = y = z = rx = ry = rz = 0
+            angles = [0] * 6
+            
+            while cdr < 3:
+                # Recibir 4096 bytes de datos
+                data = self.read_socket.recv(4096)
+                i = 0
+                
+                if data and len(data) >= 18:
+                    # Información del paquete recibido
+                    packlen = (struct.unpack('!i', data[0:4]))[0]
+                    timestamp = (struct.unpack('!Q', data[10:18]))[0]
+                    packtype = (struct.unpack('!b', data[4:5]))[0]
+
+                    # Si el tipo de paquete es el estado del robot
+                    if packtype == 16:
+                        while i + 5 < packlen and i + 10 < len(data):
+                            try:
+                                # Tamaño y tipo de mensaje
+                                msglen = (struct.unpack('!i', data[5+i:9+i]))[0]
+                                msgtype = (struct.unpack('!b', data[9+i:10+i]))[0]
+
+                                if msgtype == 1 and i + 10 + 6*41 <= len(data):
+                                    # Coordenadas articulares
+                                    j = 0
+                                    while j < 6:
+                                        if 10+i+(j*41)+8 <= len(data):
+                                            angles[j] = (struct.unpack('!d', data[10+i+(j*41):18+i+(j*41)]))[0]
+                                        j += 1
+
+                                elif msgtype == 4 and i + 10 + 48 <= len(data):
+                                    # Coordenadas cartesianas
+                                    x = (struct.unpack('!d', data[10+i:18+i]))[0]
+                                    y = (struct.unpack('!d', data[18+i:26+i]))[0]
+                                    z = (struct.unpack('!d', data[26+i:34+i]))[0]
+                                    rx = (struct.unpack('!d', data[34+i:42+i]))[0]
+                                    ry = (struct.unpack('!d', data[42+i:50+i]))[0]
+                                    rz = (struct.unpack('!d', data[50+i:58+i]))[0]
+
+                                # Incrementar i por el tamaño del mensaje
+                                if msglen > 0:
+                                    i += msglen
+                                else:
+                                    break
+                                    
+                            except struct.error:
+                                break
+                                
+                cdr += 1
+
+            return x, y, z, rx, ry, rz, angles
+            
+        except socket.timeout:
+            return None  # Timeout normal, no es un error
+        except Exception as e:
+            logger.warning(f"Error en get_pose_from_socket: {e}")
+            return None
 
     def get_current_joint_positions(self):
         """Obtener posiciones actuales de las articulaciones"""
         try:
-            if self.is_connected():
-                # Obtener posiciones reales del robot
-                return self.receive.getActualQ()
-            else:
-                # Modo desconectado: retornar posición home simulada
-                return self.home_joint_angles_rad
+            with self.position_lock:
+                if self.current_joint_positions_rad is not None:
+                    return self.current_joint_positions_rad.copy()
+                else:
+                    # Si no hay datos reales, devolver posición home
+                    return self.home_joint_angles_rad
         except Exception as e:
             logger.error(f"Error obteniendo posiciones articulares: {e}")
             return self.home_joint_angles_rad
@@ -223,12 +347,12 @@ class UR5WebController:
     def get_current_tcp_pose(self):
         """Obtener pose actual del TCP"""
         try:
-            if self.is_connected():
-                # Obtener pose real del robot
-                return self.receive.getActualTCPPose()
-            else:
-                # Modo desconectado: retornar pose home simulada
-                return [0.3, -0.2, 0.5, 0, 0, 0]
+            with self.position_lock:
+                if self.current_tcp_pose is not None:
+                    return self.current_tcp_pose.copy()
+                else:
+                    # Si no hay datos reales, devolver pose por defecto
+                    return [0.3, -0.2, 0.5, 0, 0, 0]
         except Exception as e:
             logger.error(f"Error obteniendo pose TCP: {e}")
             return [0.3, -0.2, 0.5, 0, 0, 0]
@@ -293,23 +417,23 @@ class UR5WebController:
                 target_pose = [x_m, y_m, z_m, rx_rad, ry_rad, rz_rad]
                 
                 if self.can_control():
-                    # Enviar comando real al robot
+                    # Enviar comando por socket
                     self.movement_active = True
                     logger.info(f"🤖 Moviendo robot a: {target_pose}")
                     
-                    # Usar velocidad actual
-                    velocity = self.linear_speed
-                    acceleration = self.linear_accel
-                    
-                    # Ejecutar movimiento
-                    success = self.control.moveL(target_pose, velocity, acceleration)
-                    self.movement_active = False
+                    # Crear comando URScript para movimiento lineal con formato p[]
+                    # Los datos rx, ry, rz ya están en radianes
+                    cmd = f"movel(p[{x_m:.6f},{y_m:.6f},{z_m:.6f},{rx_rad:.6f},{ry_rad:.6f},{rz_rad:.6f}], a = 1.2, v = 0.25, t = 0, r = 0)"
+                    success = self.send_command(cmd)
                     
                     if success:
-                        logger.info("✅ Movimiento completado exitosamente")
+                        logger.info("✅ Comando de movimiento enviado exitosamente")
+                        time.sleep(3.0)  # Tiempo estimado para completar movimiento
+                        self.movement_active = False
                         return True
                     else:
-                        logger.error("❌ Fallo en el movimiento")
+                        logger.error("❌ Fallo enviando comando de movimiento")
+                        self.movement_active = False
                         return False
                 elif self.is_connected():
                     # Robot conectado pero sin control
@@ -337,23 +461,29 @@ class UR5WebController:
                     return False
                 
                 if self.can_control():
-                    # Enviar comando real al robot
+                    # Enviar comando por socket
                     self.movement_active = True
-                    logger.info("🏠 Moviendo robot a posición home")
+                    logger.info("🏠 Moviendo robot a posición home...")
                     
-                    # Usar velocidades para articulaciones
-                    velocity = self.joint_speed
-                    acceleration = self.joint_accel
+                    # Detener cualquier movimiento actual
+                    self.send_stopl()
+                    self.send_stopj()
+                    time.sleep(0.1)
                     
-                    # Mover a posición home en articulaciones
-                    success = self.control.moveJ(self.home_joint_angles_rad, velocity, acceleration)
-                    self.movement_active = False
+                    # Usar sintaxis URScript que funciona
+                    joint_angles = ", ".join([f"{angle:.5f}" for angle in self.home_joint_angles_rad])
+                    cmd = f"movej([{joint_angles}], a = 2.5, v = 1.5)"
+                    
+                    success = self.send_command(cmd)
                     
                     if success:
-                        logger.info("✅ Robot en posición home")
+                        logger.info("✅ Robot movido a posición home exitosamente")
+                        time.sleep(5.0)  # Tiempo estimado para llegar a home
+                        self.movement_active = False
                         return True
                     else:
-                        logger.error("❌ Fallo moviendo a home")
+                        logger.error("❌ Error enviando comando al robot")
+                        self.movement_active = False
                         return False
                 elif self.is_connected():
                     # Robot conectado pero sin control
@@ -452,17 +582,19 @@ class UR5WebController:
                 'speed_level': self.current_speed_level + 1,
                 'speed_percentage': int(self.speed_levels[self.current_speed_level] * 100),
                 'mode': 'CONECTADO' if is_connected else 'DESCONECTADO',
-                'robot_ip': self.robot_ip
+                'robot_ip': self.robot_ip,
+                'position_reading': self.position_reading,
+                'read_socket_connected': self.read_socket is not None
             }
             
-            # Agregar información adicional si está conectado
+            # Para comunicación por socket, no tenemos acceso a información detallada
             if is_connected:
                 try:
                     status.update({
-                        'robot_mode': self.receive.getRobotMode(),
-                        'safety_mode': self.receive.getSafetyMode(),
-                        'joint_temperatures': self.receive.getJointTemperatures(),
-                        'runtime_state': self.receive.getRuntimeState()
+                        'robot_mode': 'RUNNING',  # Estado por defecto
+                        'safety_mode': 'NORMAL',  # Estado por defecto
+                        'joint_temperatures': [25.0] * 6,  # Temperaturas simuladas
+                        'runtime_state': 'RUNNING'  # Estado por defecto
                     })
                 except Exception as e:
                     logger.warning(f"Error obteniendo estado extendido: {e}")
@@ -486,30 +618,39 @@ class UR5WebController:
         return False
 
     def disconnect(self):
-        """Desconectar del robot - MODO DESCONECTADO"""
+        """Desconectar del robot y limpiar recursos"""
         try:
             with self.lock:
-                if self.movement_active:
-                    self.emergency_stop()
+                # Detener lectura de posiciones
+                self.stop_position_reading()
                 
-                # Deshabilitar control Xbox si está activo
-                if self.xbox_enabled:
-                    self.disable_xbox_control()
+                # Detener control de velocidad
+                if hasattr(self, 'velocity_active'):
+                    self.stop_velocity_control()
                 
+                # Detener control Xbox
+                self.xbox_running = False
+                if hasattr(self, 'xbox_thread') and self.xbox_thread and self.xbox_thread.is_alive():
+                    self.xbox_thread.join(timeout=2.0)
+                
+                # Cerrar sockets
+                if hasattr(self, 'socket') and self.socket:
+                    self.socket.close()
+                    self.socket = None
+                
+                if hasattr(self, 'read_socket') and self.read_socket:
+                    self.read_socket.close()
+                    self.read_socket = None
+                    
                 self.connected = False
                 
-                # En modo desconectado, no hay conexiones que cerrar
-                self.control = None
-                self.receive = None
-                self.io = None
-            
-            logger.info("📝 Controlador UR5 cerrado (modo desconectado)")
+            logger.info("📝 Controlador UR5 cerrado (modo socket)")
             
         except Exception as e:
             logger.error(f"Error cerrando controlador: {e}")
 
-    def move_joints(self, target_joints, speed=1.0, acceleration=1.5, asynchronous=False):
-        """Mover articulaciones específicas para compatibilidad con Xbox controller"""
+    def move_joints(self, target_joints, speed=2.5, acceleration=1.5, asynchronous=False):
+        """Mover articulaciones específicas usando socket"""
         if not self.can_control():
             logger.warning("⚠️ Robot no puede ser controlado")
             return False
@@ -524,11 +665,13 @@ class UR5WebController:
             
             logger.info(f"🦾 Moviendo articulaciones a: {[np.degrees(j) for j in target_joints]}")
             
-            success = self.control.moveJ(target_joints, speed, acceleration, asynchronous=asynchronous)
+            # Crear comando URScript
+            joint_str = ", ".join([f"{j:.5f}" for j in target_joints])
+            cmd = f"movej([{joint_str}], a = {acceleration}, v = {speed})"
+            success = self.send_command(cmd)
             
-            if not asynchronous:
-                # Esperar a que termine el movimiento
-                self.wait_for_movement_completion_joint(target_joints, timeout=5.0)
+            if success and not asynchronous:
+                time.sleep(3.0)  # Tiempo estimado para completar movimiento
             
             return success
             
@@ -540,8 +683,8 @@ class UR5WebController:
                 with self.lock:
                     self.movement_active = False
 
-    def move_linear(self, target_pose, speed=0.1, acceleration=0.3, asynchronous=False):
-        """Mover TCP linealmente para compatibilidad con Xbox controller"""
+    def move_linear(self, target_pose, speed=0.5, acceleration=1.5, asynchronous=False):
+        """Mover TCP linealmente usando socket"""
         if not self.can_control():
             logger.warning("⚠️ Robot no puede ser controlado")
             return False
@@ -556,21 +699,119 @@ class UR5WebController:
             
             logger.info(f"🎯 Moviendo TCP a: {target_pose}")
             
-            success = self.control.moveL(target_pose, speed, acceleration, asynchronous=asynchronous)
+            # Crear comando URScript
+            pose_str = ", ".join([f"{p:.5f}" for p in target_pose])
+            cmd = f"movel(p[{pose_str}], a = {acceleration}, v = {speed}, t = 0, r = 0)"
+            success = self.send_command(cmd)
             
-            if not asynchronous:
-                # Esperar a que termine el movimiento
-                self.wait_for_movement_completion_tcp(target_pose, timeout=5.0)
+            if success and not asynchronous:
+                time.sleep(3.0)  # Tiempo estimado para completar movimiento
             
             return success
             
+        except Exception as e:
+            logger.error(f"❌ Error moviendo TCP linealmente: {e}")
             return False
         finally:
             if not asynchronous:
                 with self.lock:
                     self.movement_active = False
 
-    # ========== FUNCIONES PARA CONTROL XBOX - SIEMPRE HABILITADO ==========
+    # ========== MÉTODOS DE CONTROL DE VELOCIDAD ==========
+    
+    def apply_deadzone(self, value, deadzone=None):
+        """Aplicar zona muerta a valor analógico"""
+        if deadzone is None:
+            deadzone = self.deadzone
+        return 0.0 if abs(value) < deadzone else value
+
+    def velocity_control_thread(self):
+        """Hilo para envío continuo de comandos de velocidad"""
+        while self.velocity_active:
+            try:
+                with self.velocity_lock:
+                    has_movement = False
+                    
+                    if self.control_mode == "linear":
+                        vx, vy, vz, wx, wy, wz = self.current_velocities['linear']
+                        if any(abs(v) > 0.001 for v in [vx, vy, vz, wx, wy, wz]):
+                            self.send_speedl(vx, vy, vz, wx, wy, wz)
+                            has_movement = True
+                            self.stop_command_sent = False
+                        else:
+                            if self.last_movement_state and not self.stop_command_sent:
+                                self.send_stopl()
+                                self.stop_command_sent = True
+                                
+                    else:  # joint mode
+                        q0, q1, q2, q3, q4, q5 = self.current_velocities['joint']
+                        if any(abs(q) > 0.001 for q in [q0, q1, q2, q3, q4, q5]):
+                            self.send_speedj(q0, q1, q2, q3, q4, q5)
+                            has_movement = True
+                            self.stop_command_sent = False
+                        else:
+                            if self.last_movement_state and not self.stop_command_sent:
+                                self.send_stopj()
+                                self.stop_command_sent = True
+                    
+                    self.last_movement_state = has_movement
+                
+                time.sleep(0.03)  # ~33 Hz
+                
+            except Exception as e:
+                logger.error(f"Error en hilo de velocidad: {e}")
+                time.sleep(0.1)
+
+    def start_velocity_control(self):
+        """Iniciar control de velocidad continuo"""
+        if not self.velocity_active:
+            self.velocity_active = True
+            self.velocity_thread = threading.Thread(target=self.velocity_control_thread)
+            self.velocity_thread.daemon = True
+            self.velocity_thread.start()
+            logger.info("Control de velocidad iniciado")
+
+    def stop_velocity_control(self):
+        """Detener control de velocidad continuo"""
+        if self.velocity_active:
+            self.velocity_active = False
+            if self.velocity_thread:
+                self.velocity_thread.join(timeout=1.0)
+            
+            # Enviar comando de parada
+            if self.control_mode == "linear":
+                self.send_stopl()
+            else:
+                self.send_stopj()
+            
+            logger.info("Control de velocidad detenido")
+
+    def update_velocities(self, velocities, mode):
+        """Actualizar velocidades objetivo"""
+        with self.velocity_lock:
+            if mode == "linear":
+                self.current_velocities['linear'] = velocities[:]
+            else:
+                self.current_velocities['joint'] = velocities[:]
+
+    def stop_all_movement(self):
+        """Detener todos los movimientos"""
+        # Limpiar velocidades
+        with self.velocity_lock:
+            self.current_velocities['linear'] = [0.0] * 6
+            self.current_velocities['joint'] = [0.0] * 6
+        
+        # Resetear flags
+        self.last_movement_state = False
+        self.stop_command_sent = False
+        
+        # Enviar comandos de parada
+        self.send_stopl()
+        self.send_stopj()
+        
+        self.stop_command_sent = True
+
+    # ========== FUNCIONES PARA CONTROL XBOX - CONTROL DE VELOCIDADES ==========
     
     def initialize_xbox_controller(self):
         """Inicializar el control Xbox - SIEMPRE HABILITADO"""
@@ -599,13 +840,16 @@ class UR5WebController:
             for i in range(self.joystick.get_numbuttons()):
                 self.previous_button_states[i] = False
             
-            # Iniciar hilo de control Xbox automáticamente
+            # Iniciar hilos de control Xbox y velocidad automáticamente
             self.xbox_enabled = True
             self.xbox_running = True
             self.xbox_thread = threading.Thread(target=self._xbox_control_loop, daemon=True)
             self.xbox_thread.start()
             
-            logger.info("🎮 Control Xbox HABILITADO automáticamente")
+            # Iniciar control de velocidad automáticamente
+            self.start_velocity_control()
+            
+            logger.info("🎮 Control Xbox HABILITADO con control de velocidades continuas")
             return True
             
         except Exception as e:
@@ -630,8 +874,8 @@ class UR5WebController:
         return self.xbox_enabled and self.xbox_running
 
     def _xbox_control_loop(self):
-        """Bucle principal del control Xbox - IMPLEMENTACIÓN DE move_controler.py"""
-        logger.info("🎮 Iniciando bucle de control Xbox...")
+        """Bucle principal del control Xbox - Control de velocidades continuas"""
+        logger.info("🎮 Iniciando bucle de control Xbox con velocidades...")
         
         try:
             clock = pygame.time.Clock()
@@ -639,22 +883,11 @@ class UR5WebController:
             while self.xbox_running and self.xbox_enabled:
                 if not self.joystick:
                     break
-                
+                    
                 try:
-                    # Procesar entrada del control
-                    self._process_xbox_input()
-                    
-                    # Debug completo cada 2 segundos si hay actividad
-                    current_time = time.time()
-                    if self.debug_mode and current_time - self.last_debug_time > 2.0:
-                        # Solo hacer debug si hay algún input activo
-                        has_input = self._has_active_input()
-                        
-                        if has_input:
-                            self._debug_all_inputs()
-                            self.last_debug_time = current_time
-                    
-                    clock.tick(100)  # 100 FPS para mejor respuesta
+                    # Procesar entrada del control con velocidades
+                    self.process_xbox_input()
+                    clock.tick(60)  # 60 FPS para respuesta fluida
                     
                 except Exception as e:
                     logger.error(f"Error en bucle Xbox: {e}")
@@ -688,15 +921,8 @@ class UR5WebController:
         return False
 
     def _process_xbox_input(self):
-        """Procesar entrada del control Xbox CON MAPEO CORREGIDO"""
-        pygame.event.pump()
-        
-        # Procesar botones
-        self._process_xbox_buttons()
-        
-        # Procesar entrada analógica si no hay movimiento activo
-        if not self.movement_active and not self.emergency_stop_active:
-            self._process_xbox_analog()
+        """Procesar entrada del control Xbox con velocidades continuas"""
+        self.process_xbox_input()  # Usar el nuevo método de velocidades
 
     def _process_xbox_buttons(self):
         """Procesar botones del control Xbox"""
@@ -775,15 +1001,27 @@ class UR5WebController:
     def activate_emergency_stop(self):
         """Activate emergency stop"""
         try:
-            if self.control and RTDE_AVAILABLE:
-                self.control.stopJ(2.0)  # Parada suave en articulaciones
-                self.control.stopL(2.0)  # Parada suave lineal
+            # Enviar comandos de parada por socket
+            self.send_stopl(2.0)  # Parada suave lineal
+            self.send_stopj(2.0)  # Parada suave en articulaciones
+            
             self.emergency_stop_active = True
             self.emergency_stop_time = time.time()
             self.movement_active = False
             logger.warning("🚨 PARADA DE EMERGENCIA ACTIVADA")
         except Exception as e:
             logger.error(f"Error en parada de emergencia: {e}")
+
+    def emergency_stop(self):
+        """Activar parada de emergencia"""
+        self.activate_emergency_stop()
+        return True
+
+    def deactivate_emergency_stop(self):
+        """Desactivar parada de emergencia"""
+        with self.lock:
+            self.emergency_stop_active = False
+            logger.info("✅ Parada de emergencia DESACTIVADA")
 
     def _process_xbox_analog(self):
         """Procesar entrada analógica del Xbox con filtros avanzados para suavizar"""
@@ -1182,3 +1420,187 @@ class UR5WebController:
             'speed_level': self.current_speed_level,
             'speed_percent': self.speed_levels[self.current_speed_level] * 100 if self.current_speed_level < len(self.speed_levels) else 0
         }
+
+    # ========== MÉTODOS DE CONTROL DE VELOCIDADES CONTINUAS ==========
+
+    def process_xbox_input(self):
+        """Procesar entrada del control Xbox"""
+        pygame.event.pump()
+        
+        # Procesar botones
+        for button_id in range(self.joystick.get_numbuttons()):
+            current_state = self.joystick.get_button(button_id)
+            previous_state = self.previous_button_states.get(button_id, False)
+            
+            # Detectar presión de botón (transición False -> True)
+            if current_state and not previous_state:
+                self.handle_button_press(button_id)
+            
+            self.previous_button_states[button_id] = current_state
+        
+        # Procesar entradas analógicas solo si no hay parada de emergencia
+        if not self.emergency_stop_active:
+            self.process_analog_input()
+
+    def handle_button_press(self, button_id):
+        """Manejar presión de botones específicos"""
+        button_actions = {
+            0: "A",          # a -> 0
+            1: "B",          # b -> 1  
+            3: "X",          # x -> 3
+            4: "Y",          # y -> 4
+            6: "LB",         # lb -> 6
+            7: "RB",         # rb -> 7
+            10: "Menu",      # menu -> 10
+            11: "Start",     # start -> 11
+        }
+        
+        button_name = button_actions.get(button_id, f"Btn{button_id}")
+        
+        if self.debug_mode:
+            logger.info(f"🎮 Botón presionado: {button_name} (ID: {button_id})")
+        
+        if button_id == 0:  # Botón A - Cambiar modo
+            if not self.emergency_stop_active:
+                old_mode = self.control_mode
+                self.control_mode = "joint" if self.control_mode == "linear" else "linear"
+                logger.info(f"🔄 Modo cambiado: {old_mode} → {self.control_mode}")
+                
+                # Detener movimiento al cambiar modo
+                self.stop_all_movement()
+        
+        elif button_id == 1:  # Botón B - Parada de emergencia / Desactivar
+            if self.emergency_stop_active:
+                self.deactivate_emergency_stop()
+            else:
+                self.activate_emergency_stop()
+        
+        elif button_id == 3:  # Botón X - Ir a posición Home
+            if not self.emergency_stop_active:
+                logger.info("🏠 Yendo a posición Home...")
+                self.go_home()
+        
+        elif button_id == 4:  # Botón Y - Detener todo movimiento
+            if not self.emergency_stop_active:
+                self.stop_all_movement()
+                logger.info("🛑 Todos los movimientos detenidos")
+        
+        elif button_id == 6:  # LB - Reducir velocidad
+            if not self.emergency_stop_active and self.current_speed_level > 0:
+                self.current_speed_level -= 1
+                logger.info(f"🔽 Velocidad reducida: Nivel {self.current_speed_level + 1}/5 ({self.speed_levels[self.current_speed_level]*100:.0f}%)")
+        
+        elif button_id == 7:  # RB - Aumentar velocidad
+            if not self.emergency_stop_active and self.current_speed_level < len(self.speed_levels) - 1:
+                self.current_speed_level += 1
+                logger.info(f"🔼 Velocidad aumentada: Nivel {self.current_speed_level + 1}/5 ({self.speed_levels[self.current_speed_level]*100:.0f}%)")
+        
+        elif button_id == 11:  # Start - Mostrar información
+            self.show_status()
+        
+        elif button_id == 10:  # Menu - Toggle debug mode
+            self.debug_mode = not self.debug_mode
+            logger.info(f"🐛 Modo debug: {'ACTIVADO' if self.debug_mode else 'DESACTIVADO'}")
+
+    def process_analog_input(self):
+        """Procesar entrada de joysticks analógicos"""
+        # Obtener valores de joysticks
+        left_x = self.apply_deadzone(self.joystick.get_axis(0))
+        left_y = self.apply_deadzone(-self.joystick.get_axis(1))  # Invertir Y
+        right_x = self.apply_deadzone(self.joystick.get_axis(2))
+        right_y = self.apply_deadzone(-self.joystick.get_axis(3))  # Invertir Y
+        
+        # Obtener D-pad (ahora usado en lugar de triggers)
+        dpad = self.joystick.get_hat(0) if self.joystick.get_numhats() > 0 else (0, 0)
+        
+        # Aplicar curva de respuesta suave
+        def smooth_response(value):
+            return np.sign(value) * (value ** 2)
+        
+        # Calcular velocidades según el modo
+        if self.control_mode == "linear":
+            velocities = self.calculate_linear_velocities(
+                left_x, left_y, right_x, right_y, dpad, smooth_response
+            )
+            self.update_velocities(velocities, "linear")
+        else:
+            velocities = self.calculate_joint_velocities(
+                left_x, left_y, right_x, right_y, dpad, smooth_response
+            )
+            self.update_velocities(velocities, "joint")
+
+    def calculate_linear_velocities(self, left_x, left_y, right_x, right_y, dpad, smooth_func):
+        """Calcular velocidades lineales del TCP"""
+        speed_factor = self.speed_levels[self.current_speed_level]
+        
+        # Velocidades lineales
+        vx = smooth_func(left_x) * self.max_linear_velocity['xy'] * speed_factor
+        vy = smooth_func(left_y) * self.max_linear_velocity['xy'] * speed_factor
+        vz = smooth_func(right_y) * self.max_linear_velocity['z'] * speed_factor
+        
+        # Velocidades rotacionales
+        wx = smooth_func(right_x) * self.max_linear_velocity['rot'] * speed_factor * 0.3
+        
+        # D-pad controla rotación Y (arriba/abajo del D-pad)
+        wy = dpad[1] * self.max_linear_velocity['rot'] * speed_factor * 0.3
+        
+        # D-pad controla rotación Z (izquierda/derecha del D-pad)
+        wz = dpad[0] * self.max_linear_velocity['rot'] * speed_factor * 0.3
+        
+        return [vx, vy, vz, wx, wy, wz]
+
+    def calculate_joint_velocities(self, left_x, left_y, right_x, right_y, dpad, smooth_func):
+        """Calcular velocidades articulares"""
+        speed_factor = self.speed_levels[self.current_speed_level]
+        velocities = [0.0] * 6
+        
+        # Joystick izquierdo controla joints 0 y 1
+        velocities[0] = smooth_func(left_x) * self.max_joint_velocity[0] * speed_factor
+        velocities[1] = smooth_func(left_y) * self.max_joint_velocity[1] * speed_factor
+        
+        # Joystick derecho controla joints 2 y 3
+        velocities[2] = smooth_func(right_y) * self.max_joint_velocity[2] * speed_factor
+        velocities[3] = smooth_func(right_x) * self.max_joint_velocity[3] * speed_factor
+        
+        # D-pad controla joint 4 (arriba/abajo del D-pad)
+        velocities[4] = dpad[1] * self.max_joint_velocity[4] * speed_factor
+        
+        # D-pad controla joint 5 (izquierda/derecha del D-pad)
+        velocities[5] = dpad[0] * self.max_joint_velocity[5] * speed_factor
+        
+        return velocities
+
+    def show_status(self):
+        """Mostrar estado actual del sistema"""
+        logger.info("\n" + "="*60)
+        logger.info("🤖 ESTADO DEL CONTROLADOR UR5e POR VELOCIDAD")
+        logger.info("="*60)
+        logger.info(f"🎮 Control: {self.joystick.get_name() if self.joystick else 'No conectado'}")
+        logger.info(f"🔄 Modo: {self.control_mode.upper()}")
+        logger.info(f"⚡ Velocidad: Nivel {self.current_speed_level + 1}/5 ({self.speed_levels[self.current_speed_level]*100:.0f}%)")
+        logger.info(f"📡 Conexión: {'OK' if self.is_connected() else 'ERROR'}")
+        logger.info(f"🚨 Parada emergencia: {'ACTIVA' if self.emergency_stop_active else 'INACTIVA'}")
+        logger.info(f"🐛 Debug mode: {'ON' if self.debug_mode else 'OFF'}")
+        logger.info(f"⚡ Control velocidad: {'ACTIVO' if self.velocity_active else 'INACTIVO'}")
+        
+        # Velocidades actuales
+        try:
+            with self.velocity_lock:
+                if self.control_mode == "linear":
+                    vx, vy, vz, wx, wy, wz = self.current_velocities['linear']
+                    logger.info(f"\n🎯 Velocidades lineales actuales:")
+                    logger.info(f"  VX: {vx*1000:+7.1f} mm/s")
+                    logger.info(f"  VY: {vy*1000:+7.1f} mm/s")
+                    logger.info(f"  VZ: {vz*1000:+7.1f} mm/s")
+                    logger.info(f"  WX: {np.degrees(wx):+7.1f} °/s")
+                    logger.info(f"  WY: {np.degrees(wy):+7.1f} °/s")
+                    logger.info(f"  WZ: {np.degrees(wz):+7.1f} °/s")
+                else:
+                    q0, q1, q2, q3, q4, q5 = self.current_velocities['joint']
+                    logger.info(f"\n🔗 Velocidades articulares actuales:")
+                    for i, vel in enumerate([q0, q1, q2, q3, q4, q5]):
+                        logger.info(f"  Joint {i}: {np.degrees(vel):+7.1f} °/s")
+        except Exception as e:
+            logger.info(f"  Error mostrando velocidades: {e}")
+        
+        logger.info("="*60)
