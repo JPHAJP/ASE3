@@ -78,6 +78,13 @@ class RobotWebApp:
             conn_info = get_connection_info()
             logger.info(f"📡 Gripper: {conn_info['description']}")
             
+            # Conectar proactivamente al gripper en la inicialización
+            logger.info("🔧 Conectando al gripper durante inicialización...")
+            if self.gripper_controller.connect():
+                logger.info("✅ Gripper conectado exitosamente durante inicialización")
+            else:
+                logger.warning("⚠️ No se pudo conectar al gripper durante inicialización (se reintentará cuando se necesite)")
+            
             logger.info("✅ Controladores inicializados correctamente")
         except Exception as e:
             logger.error(f"❌ Error inicializando controladores: {e}")
@@ -411,10 +418,13 @@ def send_gripper_command():
             robot_app.add_log_message("Gripper no inicializado", "warning")
             return jsonify({'success': False, 'message': 'Gripper no inicializado'})
         
-        # Conectar si no está conectado
+        # Conectar si no está conectado (con reintentos mejorados)
         if not robot_app.gripper_controller.connected:
+            robot_app.add_log_message("Intentando reconectar al gripper...", "info")
             if not robot_app.gripper_controller.connect():
-                return jsonify({'success': False, 'message': 'No se pudo conectar al gripper'})
+                robot_app.add_log_message("Error: No se pudo conectar al gripper tras múltiples intentos", "error")
+                return jsonify({'success': False, 'message': 'No se pudo conectar al gripper tras múltiples intentos'})
+            robot_app.add_log_message("Gripper reconectado exitosamente", "info")
         
         # ENVIAR COMANDO DIRECTAMENTE SIN VALIDACIONES NI LIMITACIONES
         # Usar send_raw_command con validate=False para permitir cualquier comando
@@ -562,12 +572,13 @@ def get_gripper_status():
 
 @app.route('/api/gripper/connect', methods=['POST'])
 def connect_gripper():
-    """Conectar/reconectar al gripper"""
+    """Conectar/reconectar al gripper con reintentos automáticos"""
     try:
         if not robot_app.gripper_controller:
             return jsonify({'success': False, 'message': 'Gripper no inicializado'})
         
-        success = robot_app.gripper_controller.connect()
+        robot_app.add_log_message("Iniciando conexión al gripper...", "info")
+        success = robot_app.gripper_controller.connect()  # Ahora usa reintentos automáticos
         
         if success:
             # Obtener información de configuración para la respuesta
@@ -583,9 +594,9 @@ def connect_gripper():
                 'connection_info': connection_info
             })
         else:
-            robot_app.add_log_message("Error conectando gripper", "error")
+            robot_app.add_log_message("Error: No se pudo conectar al gripper tras múltiples intentos", "error")
             robot_app.emit_gripper_status()  # Emitir estado actualizado
-            return jsonify({'success': False, 'message': 'Error conectando gripper'})
+            return jsonify({'success': False, 'message': 'No se pudo conectar al gripper tras múltiples intentos'})
     
     except Exception as e:
         robot_app.add_log_message(f"Error en conexión gripper: {str(e)}", "error")

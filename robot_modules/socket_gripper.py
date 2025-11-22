@@ -64,62 +64,105 @@ class SocketGripperController:
         logger.info(f"SocketGripperController inicializado - Host: {self.host}:{self.port}")
 
     def connect(self):
-        """Establecer conexión TCP con el gripper"""
-        try:
-            current_time = time.time()
-            
-            # Evitar intentos de conexión muy frecuentes
-            if current_time - self.last_connection_attempt < 2.0:
-                logger.warning("⏳ Esperando antes de reintento de conexión")
-                return False
-            
-            self.last_connection_attempt = current_time
-            
-            if self.debug:
-                logger.info(f"🔌 Conectando a {self.host}:{self.port}")
-            
-            # Crear conexión socket TCP
-            self.socket_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket_conn.settimeout(self.connection_timeout)
-            self.socket_conn.connect((self.host, self.port))
-            
-            # Configurar timeout para recepción no bloqueante
-            self.socket_conn.settimeout(0.1)
-            
-            self.connected = True
-            logger.info("✅ Conexión TCP establecida con gripper")
-            
-            # Iniciar hilos de comunicación
-            self.start_threads()
-            
-            # Leer mensaje de bienvenida inicial
-            time.sleep(0.5)
-            welcome_data = self.get_received_data()
-            if welcome_data and self.debug:
-                logger.info(f"📄 Mensaje de bienvenida: {[item['data'] for item in welcome_data]}")
-            
-            # Enviar comando de inicialización
-            self.send_command("HELP")
-            
-            return True
-            
-        except socket.error as e:
-            if self.debug:
-                logger.error(f"❌ Error de socket al conectar: {e}")
-            
-            self.connected = False
-            if self.socket_conn:
-                try:
-                    self.socket_conn.close()
-                except:
-                    pass
-                self.socket_conn = None
-            
-            return False
-        except Exception as e:
-            logger.error(f"❌ Error inesperado conectando: {e}")
-            self.connected = False
-            return False
+        """Establecer conexión TCP con el gripper con reintentos mejorados"""
+        return self.connect_with_retry(max_retries=3, retry_delay=1.5)
+    
+    def connect_with_retry(self, max_retries=3, retry_delay=1.5):
+        """Conectar con reintentos automáticos para manejar limitaciones del ESP32"""
+        
+        # Si ya está conectado, verificar que la conexión sea válida
+        if self.connected and self.socket_conn:
+            try:
+                # Test rápido de la conexión
+                self.socket_conn.settimeout(0.1)
+                self.socket_conn.sendall(b"")  # Envío vacío para test
+                if self.debug:
+                    logger.debug("✅ Conexión existente válida")
+                return True
+            except:
+                # Conexión rota, cerrar y reconectar
+                if self.debug:
+                    logger.debug("🔄 Conexión existente rota, reconectando")
+                self.disconnect()
+        
+        for attempt in range(max_retries + 1):
+            try:
+                current_time = time.time()
+                
+                # Evitar intentos de conexión muy frecuentes, con delay mayor en reintentos
+                min_delay = retry_delay if attempt > 0 else 2.0
+                if current_time - self.last_connection_attempt < min_delay:
+                    sleep_time = min_delay - (current_time - self.last_connection_attempt)
+                    if self.debug:
+                        logger.debug(f"⏰ Esperando {sleep_time:.1f}s antes del intento {attempt + 1}")
+                    time.sleep(sleep_time)
+                
+                self.last_connection_attempt = time.time()
+                
+                if self.debug:
+                    attempt_msg = f" (intento {attempt + 1}/{max_retries + 1})" if attempt > 0 else ""
+                    logger.info(f"🔌 Conectando a {self.host}:{self.port}{attempt_msg}")
+                
+                # Crear conexión socket TCP
+                self.socket_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket_conn.settimeout(self.connection_timeout)
+                self.socket_conn.connect((self.host, self.port))
+                
+                # Configurar timeout para recepción no bloqueante
+                self.socket_conn.settimeout(0.1)
+                
+                self.connected = True
+                logger.info("✅ Conexión TCP establecida con gripper")
+                
+                # Iniciar hilos de comunicación
+                self.start_threads()
+                
+                # Leer mensaje de bienvenida inicial
+                time.sleep(0.5)
+                welcome_data = self.get_received_data()
+                if welcome_data and self.debug:
+                    logger.info(f"📄 Mensaje de bienvenida: {[item['data'] for item in welcome_data]}")
+                
+                # Enviar comando de inicialización
+                self.send_command("HELP")
+                
+                return True
+                
+            except socket.error as e:
+                error_msg = str(e)
+                
+                if attempt < max_retries:
+                    if "Connection refused" in error_msg:
+                        if self.debug:
+                            logger.warning(f"🚫 Conexión rechazada, reintentando en {retry_delay}s... (intento {attempt + 1}/{max_retries + 1})")
+                    else:
+                        logger.warning(f"⚠️ Error de socket: {e}, reintentando...")
+                else:
+                    # Último intento falló
+                    if self.debug:
+                        logger.error(f"❌ Error de socket al conectar tras {max_retries + 1} intentos: {e}")
+                
+                # Limpiar socket fallido
+                self.connected = False
+                if self.socket_conn:
+                    try:
+                        self.socket_conn.close()
+                    except:
+                        pass
+                    self.socket_conn = None
+                
+                # Esperar antes del siguiente intento (solo si no es el último)
+                if attempt < max_retries:
+                    time.sleep(retry_delay)
+                
+            except Exception as e:
+                logger.error(f"❌ Error inesperado conectando: {e}")
+                self.connected = False
+                if attempt >= max_retries:
+                    break
+                time.sleep(retry_delay)
+        
+        return False
 
     def start_threads(self):
         """Inicia los hilos de envío y recepción"""
@@ -174,10 +217,11 @@ class SocketGripperController:
             except socket.timeout:
                 # Timeout normal, continuar
                 continue
-            except socket.error as e:
+            except (socket.error, ConnectionResetError, BrokenPipeError) as e:
                 if self.running:
                     logger.error(f"❌ Error de socket en recepción: {e}")
                     self.connected = False
+                    self._mark_connection_broken()
                 break
             except Exception as e:
                 if self.running:
@@ -219,10 +263,10 @@ class SocketGripperController:
             except queue.Empty:
                 # No hay comandos, continuar
                 continue
-            except socket.error as e:
+            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, socket.error) as e:
                 if self.running:
-                    logger.error(f"❌ Error de socket en envío: {e}")
-                    self.connected = False
+                    logger.warning(f"⚠️ Conexión perdida en envío: {e}")
+                    self._mark_connection_broken()
                 break
             except Exception as e:
                 if self.running:
@@ -319,6 +363,7 @@ class SocketGripperController:
             "GET GRIP",
             "DO FORCE",
             "DO GRIP",
+            "DO LIGHT",
             "INIT", 
             "DISCONNECT",
             "PING",
@@ -349,18 +394,25 @@ class SocketGripperController:
         
         return False, f"Comando no reconocido: {command}"
 
-    def send_raw_command(self, command, timeout=None, validate=True):
+    def send_raw_command(self, command, timeout=None, validate=True, auto_reconnect=True):
         """
-        Enviar comando crudo al gripper con validación opcional
+        Enviar comando crudo al gripper con validación opcional y reconexión automática
         
         Args:
             command: Comando a enviar
             timeout: Timeout específico para este comando
             validate: Si True, valida el comando antes de enviar
+            auto_reconnect: Si True, intenta reconectar automáticamente si falla
             
         Returns:
             tuple: (success, response) 
         """
+        # Intentar reconectar si no está conectado
+        if not self.connected and auto_reconnect:
+            logger.info("🔄 Conexión perdida, intentando reconectar...")
+            if not self.connect_with_retry(max_retries=2, retry_delay=3.0):
+                return False, "No se pudo reconectar al gripper"
+        
         if not self.connected:
             return False, "No hay conexión establecida"
         
@@ -371,33 +423,103 @@ class SocketGripperController:
                 logger.warning(f"⚠️ {error_msg}")
                 return False, error_msg
         
-        try:
-            # Limpiar cola de recepción antes de enviar
-            self.get_received_data()
-            
-            # Enviar comando
-            success = self.send_command(command)
-            if not success:
-                return False, "Error enviando comando"
-            
-            # Esperar respuesta
-            if timeout is None:
-                timeout = 2.0
+        max_attempts = 2 if auto_reconnect else 1
+        
+        for attempt in range(max_attempts):
+            try:
+                # Verificar salud de la conexión antes de enviar
+                if not self._check_connection_health():
+                    if auto_reconnect and attempt < max_attempts - 1:
+                        logger.info("🔄 Conexión no saludable, reintentando...")
+                        self.disconnect()
+                        time.sleep(2.0)
+                        if not self.connect_with_retry(max_retries=2, retry_delay=3.0):
+                            continue
+                    else:
+                        return False, "Conexión no saludable"
                 
-            response = self.get_latest_response(timeout)
+                # Limpiar cola de recepción antes de enviar
+                self.get_received_data()
+                
+                # Enviar comando
+                success = self.send_command(command)
+                if not success:
+                    if auto_reconnect and attempt < max_attempts - 1:
+                        logger.info("🔄 Error enviando, reintentando...")
+                        continue
+                    return False, "Error enviando comando"
+                
+                # Esperar respuesta
+                if timeout is None:
+                    timeout = 2.0
+                    
+                response = self.get_latest_response(timeout)
+                
+                if response:
+                    return True, response
+                else:
+                    # NOTA: Los timeouts son normales - el gripper no siempre responde
+                    return True, "Comando enviado (sin respuesta)"
+                    
+            except (socket.error, ConnectionResetError, BrokenPipeError) as e:
+                logger.warning(f"⚠️ Error de conexión detectado: {e}")
+                self.connected = False
+                self._mark_connection_broken()
+                
+                if auto_reconnect and attempt < max_attempts - 1:
+                    logger.info(f"🔄 Reintentando comando tras error de conexión (intento {attempt + 2}/{max_attempts})...")
+                    self.disconnect()
+                    time.sleep(3.0)  # Esperar más tiempo para reconexión
+                    if not self.connect_with_retry(max_retries=3, retry_delay=2.0):
+                        continue
+                else:
+                    return False, f"Error de conexión: {str(e)}"
+                    
+            except Exception as e:
+                # Solo logear errores reales, no timeouts normales
+                if "timeout" not in str(e).lower() and "no se recibió respuesta" not in str(e).lower():
+                    logger.info(f"📤 Comando enviado para send_raw_command: {e}")
+                
+                if auto_reconnect and attempt < max_attempts - 1:
+                    logger.info("🔄 Error inesperado, reintentando...")
+                    time.sleep(1.0)
+                    continue
+                else:
+                    return True, "Comando enviado"
+        
+        return False, "Falló tras múltiples intentos"
+    
+    def _check_connection_health(self):
+        """Verificar si la conexión está saludable"""
+        if not self.connected or not self.socket_conn:
+            return False
             
-            if response:
-                return True, response
-            else:
-                # NOTA: Los timeouts son normales - el gripper no siempre responde
-                # No se considera un error que requiera logging
-                return True, "Comando enviado (sin respuesta)"
+        try:
+            # Verificar que los hilos estén vivos
+            if not (self.sender_thread and self.sender_thread.is_alive()):
+                logger.debug("🔍 Hilo sender no está vivo")
+                return False
+            if not (self.receiver_thread and self.receiver_thread.is_alive()):
+                logger.debug("🔍 Hilo receiver no está vivo")
+                return False
+            
+            # Test básico del socket (no envía datos reales)
+            try:
+                # Intentar obtener el estado del socket
+                self.socket_conn.getpeername()
+                return True
+            except:
+                logger.debug("🔍 Socket no accesible")
+                return False
                 
         except Exception as e:
-            # Solo logear errores reales, no timeouts normales
-            if "timeout" not in str(e).lower() and "no se recibió respuesta" not in str(e).lower():
-                logger.info(f"📤 Comando enviado para send_raw_command: {e}")
-            return True, "Comando enviado"
+            logger.debug(f"🔍 Health check falló: {e}")
+            return False
+    
+    def _mark_connection_broken(self):
+        """Marcar la conexión como rota y limpiar estado"""
+        self.connected = False
+        self.running = False
 
     def send_gripper_command(self, force, position):
         """
@@ -908,6 +1030,23 @@ class SocketGripperController:
                 
         except Exception as e:
             logger.error(f"❌ Error reiniciando gripper: {e}")
+            return False, str(e)
+
+    def usense_light_toggle(self):
+        """Toggle de la luz del gripper usando comando DO LIGHT TOGGLE"""
+        try:
+            logger.info("💡 Haciendo toggle de la luz del gripper...")
+            success, response = self.send_raw_command("DO LIGHT TOGGLE", timeout=3.0)
+            
+            if success:
+                logger.info("✅ Toggle de luz ejecutado exitosamente")
+                return True, response
+            else:
+                logger.warning("⚠️ Comando de toggle de luz enviado (sin respuesta del gripper)")
+                return True, response  # Consideramos éxito si se envió el comando
+                
+        except Exception as e:
+            logger.error(f"❌ Error haciendo toggle de luz: {e}")
             return False, str(e)
 
 # Alias para compatibilidad con código existente

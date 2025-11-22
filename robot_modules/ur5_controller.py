@@ -21,6 +21,15 @@ except ImportError:
     PYGAME_AVAILABLE = False
     print("❌ pygame no disponible - Control Xbox deshabilitado")
 
+# Importaciones para control del gripper
+try:
+    from robot_modules.gripper_config import get_gripper_controller
+    GRIPPER_AVAILABLE = True
+    print("✅ Módulo gripper disponible")
+except ImportError:
+    GRIPPER_AVAILABLE = False
+    print("❌ Módulo gripper no disponible")
+
 logger = logging.getLogger(__name__)
 
 class UR5WebController:
@@ -110,6 +119,30 @@ class UR5WebController:
         # Debug
         self.debug_mode = True
         self.last_debug_time = 0
+        
+        # ========== CONTROL DEL GRIPPER ==========
+        self.gripper_controller = None
+        self.gripper_enabled = GRIPPER_AVAILABLE
+        
+        # Variables para control del gatillo derecho (mapeo 0-5000 steps)
+        self.right_trigger_values = []  # Buffer para promedio de 4 segundos
+        self.right_trigger_buffer_duration = 4.0  # segundos
+        self.last_trigger_activation = 0
+        self.trigger_threshold = 0.8  # Umbral para cerrar gripper
+        self.trigger_was_above_threshold = False
+        self.close_steps = 1000  # Pasos a cerrar cuando se activa
+        self.last_mapped_steps = 0  # Para evitar movimientos redundantes
+        
+        # Inicializar gripper si está disponible
+        if self.gripper_enabled:
+            try:
+                self.gripper_controller = get_gripper_controller()
+                if self.gripper_controller:
+                    self.gripper_controller.connect()
+                    logger.info("🦾 Controlador gripper inicializado")
+            except Exception as e:
+                logger.error(f"❌ Error inicializando gripper: {e}")
+                self.gripper_enabled = False
         
         # Intentar conectar al robot
         self.initialize_robot()
@@ -606,6 +639,9 @@ class UR5WebController:
         # Incluir información del control Xbox
         status.update(self.get_xbox_status())
         
+        # Incluir información del gripper
+        status.update(self.get_gripper_status())
+        
         return status
 
     def set_speed_level(self, level):
@@ -641,6 +677,14 @@ class UR5WebController:
                 if hasattr(self, 'read_socket') and self.read_socket:
                     self.read_socket.close()
                     self.read_socket = None
+                
+                # Desconectar gripper
+                if hasattr(self, 'gripper_controller') and self.gripper_controller:
+                    try:
+                        self.gripper_controller.disconnect()
+                    except Exception as e:
+                        logger.warning(f"Error desconectando gripper: {e}")
+                    self.gripper_controller = None
                     
                 self.connected = False
                 
@@ -1480,10 +1524,10 @@ class UR5WebController:
                 logger.info("🏠 Yendo a posición Home...")
                 self.go_home()
         
-        elif button_id == 4:  # Botón Y - Detener todo movimiento
-            if not self.emergency_stop_active:
-                self.stop_all_movement()
-                logger.info("🛑 Todos los movimientos detenidos")
+        elif button_id == 4:  # Botón Y - Home del gripper
+            if not self.emergency_stop_active and self.gripper_enabled:
+                logger.info("🦾 Moviendo gripper a posición HOME...")
+                self.gripper_home()
         
         elif button_id == 6:  # LB - Reducir velocidad
             if not self.emergency_stop_active and self.current_speed_level > 0:
@@ -1495,8 +1539,10 @@ class UR5WebController:
                 self.current_speed_level += 1
                 logger.info(f"🔼 Velocidad aumentada: Nivel {self.current_speed_level + 1}/5 ({self.speed_levels[self.current_speed_level]*100:.0f}%)")
         
-        elif button_id == 11:  # Start - Mostrar información
+        elif button_id == 11:  # Start - Mostrar información y toggle luz gripper
             self.show_status()
+            if self.gripper_enabled:
+                self.gripper_light_toggle()
         
         elif button_id == 10:  # Menu - Toggle debug mode
             self.debug_mode = not self.debug_mode
@@ -1509,6 +1555,18 @@ class UR5WebController:
         left_y = self.apply_deadzone(-self.joystick.get_axis(1))  # Invertir Y
         right_x = self.apply_deadzone(self.joystick.get_axis(2))
         right_y = self.apply_deadzone(-self.joystick.get_axis(3))  # Invertir Y
+        
+        # Obtener triggers para control del gripper
+        if self.joystick.get_numaxes() > 4:
+            left_trigger = self.joystick.get_axis(4)  # Gatillo izquierdo
+            right_trigger = self.joystick.get_axis(5)  # Gatillo derecho
+            
+            # Normalizar triggers (de -1,1 a 0,1)
+            left_trigger = (left_trigger + 1) / 2 if self.joystick.get_numaxes() > 4 else 0
+            right_trigger = (right_trigger + 1) / 2 if self.joystick.get_numaxes() > 5 else 0
+            
+            # Procesar control del gripper
+            self.process_gripper_control(right_trigger)
         
         # Obtener D-pad (ahora usado en lugar de triggers)
         dpad = self.joystick.get_hat(0) if self.joystick.get_numhats() > 0 else (0, 0)
@@ -1604,3 +1662,155 @@ class UR5WebController:
             logger.info(f"  Error mostrando velocidades: {e}")
         
         logger.info("="*60)
+
+    # ========== MÉTODOS DE CONTROL DEL GRIPPER ==========
+
+    def process_gripper_control(self, right_trigger_value):
+        """Procesar control del gripper con gatillo derecho"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            return
+        
+        current_time = time.time()
+        
+        # Agregar valor al buffer para promedio de 4 segundos
+        self.right_trigger_values.append({
+            'value': right_trigger_value,
+            'time': current_time
+        })
+        
+        # Limpiar valores antiguos (más de 4 segundos)
+        self.right_trigger_values = [
+            item for item in self.right_trigger_values 
+            if current_time - item['time'] <= self.right_trigger_buffer_duration
+        ]
+        
+        # Calcular promedio de los últimos 4 segundos
+        if len(self.right_trigger_values) > 0:
+            average_trigger = sum(item['value'] for item in self.right_trigger_values) / len(self.right_trigger_values)
+            
+            # Mapear de 0-1 a 0-5000 steps y redondear a 1 decimal
+            mapped_steps = round(average_trigger * 5000, 1)
+            
+            # Verificar si se debe activar cierre por umbral
+            if right_trigger_value > self.trigger_threshold:
+                if not self.trigger_was_above_threshold:
+                    # Primer cruce del umbral - cerrar gripper
+                    logger.info(f"🦾 Gatillo > {self.trigger_threshold}: Cerrando gripper {self.close_steps} pasos")
+                    self.gripper_close_steps(self.close_steps)
+                    self.trigger_was_above_threshold = True
+            else:
+                # Gatillo por debajo del umbral
+                if self.trigger_was_above_threshold:
+                    # Resetear estado para permitir nuevo cierre
+                    self.trigger_was_above_threshold = False
+            
+            # Mover gripper a posición basada en promedio (solo si hay cambio significativo)
+            if len(self.right_trigger_values) >= 5:  # Esperar suficientes datos
+                if abs(mapped_steps - getattr(self, 'last_mapped_steps', 0)) > 50:  # Cambio mínimo de 50 pasos
+                    if self.debug_mode:
+                        logger.info(f"🦾 Gatillo promedio: {average_trigger:.3f} → {mapped_steps:.1f} pasos")
+                    
+                    self.gripper_move_to_steps(mapped_steps)
+                    self.last_mapped_steps = mapped_steps
+
+    def gripper_home(self):
+        """Mover gripper a posición home"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            logger.warning("❌ Gripper no disponible")
+            return False
+        
+        try:
+            logger.info("🦾 Ejecutando MOVE GRIP HOME...")
+            result = self.gripper_controller.usense_home_gripper()
+            if result:
+                logger.info("✅ Gripper movido a HOME exitosamente")
+                return True
+            else:
+                logger.warning("⚠️ Comando de HOME enviado (sin respuesta del gripper)")
+                return True  # Consideramos éxito si se envió el comando
+        except Exception as e:
+            logger.error(f"❌ Error moviendo gripper a HOME: {e}")
+            return False
+
+    def gripper_close_steps(self, steps):
+        """Cerrar gripper un número específico de pasos"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            logger.warning("❌ Gripper no disponible")
+            return False
+        
+        try:
+            logger.info(f"🦾 Cerrando gripper {steps} pasos...")
+            result = self.gripper_controller.usense_move_steps(-abs(steps))  # Negativo para cerrar
+            if result:
+                logger.info(f"✅ Gripper cerrado {steps} pasos exitosamente")
+                return True
+            else:
+                logger.warning(f"⚠️ Comando de cierre {steps} pasos enviado (sin respuesta del gripper)")
+                return True  # Consideramos éxito si se envió el comando
+        except Exception as e:
+            logger.error(f"❌ Error cerrando gripper: {e}")
+            return False
+
+    def gripper_move_to_steps(self, target_steps):
+        """Mover gripper a posición específica en pasos absolutos"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            return False
+        
+        try:
+            # Convertir de posición absoluta a movimiento relativo
+            # Nota: Este es un mapeo simplificado, podría necesitar ajustes
+            result = self.gripper_controller.usense_move_steps(int(target_steps))
+            if self.debug_mode:
+                logger.debug(f"🦾 Gripper moviéndose a {target_steps:.1f} pasos")
+            return result
+        except Exception as e:
+            if self.debug_mode:
+                logger.error(f"❌ Error moviendo gripper a {target_steps} pasos: {e}")
+            return False
+
+    def get_gripper_status(self):
+        """Obtener estado del gripper para la interfaz web"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            return {
+                'gripper_enabled': False,
+                'gripper_connected': False,
+                'current_steps': 0,
+                'trigger_average': 0.0
+            }
+        
+        # Calcular promedio actual del gatillo
+        current_time = time.time()
+        valid_values = [
+            item['value'] for item in self.right_trigger_values 
+            if current_time - item['time'] <= self.right_trigger_buffer_duration
+        ]
+        
+        average_trigger = sum(valid_values) / len(valid_values) if valid_values else 0.0
+        mapped_steps = round(average_trigger * 5000, 1)
+        
+        return {
+            'gripper_enabled': self.gripper_enabled,
+            'gripper_connected': self.gripper_controller.connected if self.gripper_controller else False,
+            'current_steps': mapped_steps,
+            'trigger_average': average_trigger,
+            'trigger_above_threshold': self.trigger_was_above_threshold
+        }
+
+    def gripper_light_toggle(self):
+        """Toggle de la luz del gripper"""
+        if not self.gripper_enabled or not self.gripper_controller:
+            logger.warning("❌ Gripper no disponible")
+            return False
+        
+        try:
+            logger.info("💡 Ejecutando toggle de luz del gripper...")
+            result = self.gripper_controller.usense_light_toggle()
+            if result:
+                logger.info("✅ Toggle de luz ejecutado exitosamente")
+                return True
+            else:
+                logger.warning("⚠️ Comando de toggle de luz enviado (sin respuesta del gripper)")
+                return True  # Consideramos éxito si se envió el comando
+        except Exception as e:
+            logger.error(f"❌ Error ejecutando toggle de luz: {e}")
+            return False
