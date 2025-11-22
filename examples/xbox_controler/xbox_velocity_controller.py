@@ -63,6 +63,10 @@ class XboxUR5eVelocityController:
         # Modo de control
         self.control_mode = "linear"  # "linear" o "joint"
         
+        # Posición home
+        self.home_joint_angles_deg = [-58.49, -78.0, -98.4, -94.67, 88.77, -109.86]
+        self.home_joint_angles_rad = np.radians(self.home_joint_angles_deg)
+        
         # Estados para detección de cambios de botones
         self.previous_button_states = {}
         
@@ -78,6 +82,10 @@ class XboxUR5eVelocityController:
             'joint': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # velocidades articulares
         }
         self.velocity_lock = threading.Lock()
+        
+        # Control para evitar spam de comandos de parada
+        self.last_movement_state = False  # Si había movimiento en la iteración anterior
+        self.stop_command_sent = False    # Si ya se envió comando de parada
         
         # Debug
         self.debug_mode = True
@@ -102,11 +110,23 @@ class XboxUR5eVelocityController:
             if self.socket:
                 cmd_bytes = (command + "\n").encode('utf-8')
                 self.socket.send(cmd_bytes)
+                
+                # Debug: mostrar comando enviado si el debug está activo
+                # Pero no mostrar comandos de parada repetitivos
+                if self.debug_mode:
+                    if not (command.startswith('stopl(') or command.startswith('stopj(')):
+                        print(f"📤 Comando enviado: {command}")
+                    elif not hasattr(self, '_last_debug_stop') or self._last_debug_stop != command:
+                        print(f"📤 Comando enviado: {command} (parada)")
+                        self._last_debug_stop = command
+                
                 return True
+            else:
+                print("❌ No hay conexión con el robot")
+                return False
         except Exception as e:
-            print(f"Error enviando comando: {e}")
+            print(f"❌ Error enviando comando: {e}")
             return False
-        return False
     
     def send_speedl(self, vx, vy, vz, wx, wy, wz, a=None, t=None):
         """Enviar comando de velocidad lineal"""
@@ -142,6 +162,103 @@ class XboxUR5eVelocityController:
         cmd = f"stopj({a})"
         return self.send_command(cmd)
     
+    def go_home(self):
+        """Mover robot a posición home"""
+        if self.emergency_stop_active:
+            print("No se puede ir a home: parada de emergencia activa")
+            return False
+        
+        try:
+            print("🏠 Moviendo robot a posición home...")
+            
+            # Detener cualquier movimiento actual
+            self.send_stopl()
+            self.send_stopj()
+            time.sleep(0.1)
+            
+            # Usar sintaxis URScript que funciona
+            joint_angles = ", ".join([f"{angle:.5f}" for angle in self.home_joint_angles_rad])
+            
+            # Usar la sintaxis simple que ya sabemos que funciona
+            cmd = f"movej([{joint_angles}], 2.5, 1.5)"
+            
+            print(f"🔧 Enviando comando: {cmd}")
+            success = self.send_command(cmd)
+            
+            if success:
+                print("✅ Robot movido a posición home exitosamente")
+                time.sleep(5.0)  # Tiempo estimado para llegar a home
+                print("✅ Robot en posición home")
+            else:
+                print("❌ Error enviando comando al robot")
+                
+            return success
+            
+        except Exception as e:
+            print(f"❌ Error moviendo robot a home: {e}")
+            return False
+    
+    def test_simple_movement(self):
+        """Función de prueba para enviar comandos simples"""
+        print("🧪 Probando diferentes sintaxis de movimiento...")
+        
+        # Comandos de prueba con diferentes sintaxis
+        test_commands = [
+            "movej([0, -1.57, 0, -1.57, 0, 0], 1.0, 1.0)",  # Posición simple
+            "movej([0, -1.57, 0, -1.57, 0, 0], 1.0, 1.0, 5.0)",  # Con tiempo
+            "moveJ([0, -1.57, 0, -1.57, 0, 0], 1.0, 1.0)",  # J mayúscula
+            "movej([0, -1.57, 0, -1.57, 0, 0], a=1.0, v=1.0)",  # Con parámetros nombrados
+        ]
+        
+        for i, cmd in enumerate(test_commands, 1):
+            print(f"🔧 Probando comando {i}: {cmd}")
+            success = self.send_command(cmd)
+            if success:
+                print(f"✅ Comando {i} enviado exitosamente")
+                time.sleep(3)  # Dar tiempo al movimiento
+                break
+            else:
+                print(f"❌ Comando {i} falló")
+        
+        return success
+    
+    def go_home_alternative(self):
+        """Versión alternativa para ir a home usando sintaxis URScript estándar"""
+        if self.emergency_stop_active:
+            print("No se puede ir a home: parada de emergencia activa")
+            return False
+        
+        try:
+            print("🏠 [ALTERNATIVA] Moviendo robot a posición home...")
+            
+            # Detener movimientos actuales
+            self.send_stopl()
+            self.send_stopj()
+            time.sleep(0.1)
+            
+            # Usar sintaxis URScript estándar: movej(q, a, v, t, r)
+            joint_angles = [f"{angle:.5f}" for angle in self.home_joint_angles_rad]
+            joints_str = f"[{', '.join(joint_angles)}]"
+            
+            # Sintaxis más estándar para robots UR
+            cmd = f"movej({joints_str}, a=1.5, v=1.0, t=0, r=0)"
+            
+            print(f"🔧 Comando alternativo: {cmd}")
+            success = self.send_command(cmd)
+            
+            if success:
+                print("✅ Comando alternativo enviado")
+                time.sleep(6)  # Dar tiempo al movimiento
+                print("✅ Movimiento alternativo completado")
+            else:
+                print("❌ Error en comando alternativo")
+                
+            return success
+            
+        except Exception as e:
+            print(f"❌ Error en movimiento alternativo: {e}")
+            return False
+    
     def apply_deadzone(self, value, deadzone=None):
         """Aplicar zona muerta a valor analógico"""
         if deadzone is None:
@@ -153,18 +270,34 @@ class XboxUR5eVelocityController:
         while self.velocity_active:
             try:
                 with self.velocity_lock:
+                    has_movement = False
+                    
                     if self.control_mode == "linear":
                         vx, vy, vz, wx, wy, wz = self.current_velocities['linear']
                         if any(abs(v) > 0.001 for v in [vx, vy, vz, wx, wy, wz]):
                             self.send_speedl(vx, vy, vz, wx, wy, wz)
+                            has_movement = True
+                            self.stop_command_sent = False  # Reset flag de parada
                         else:
-                            self.send_stopl()
+                            # Solo enviar comando de parada si había movimiento antes
+                            if self.last_movement_state and not self.stop_command_sent:
+                                self.send_stopl()
+                                self.stop_command_sent = True
+                                
                     else:  # joint mode
                         q0, q1, q2, q3, q4, q5 = self.current_velocities['joint']
                         if any(abs(q) > 0.001 for q in [q0, q1, q2, q3, q4, q5]):
                             self.send_speedj(q0, q1, q2, q3, q4, q5)
+                            has_movement = True
+                            self.stop_command_sent = False  # Reset flag de parada
                         else:
-                            self.send_stopj()
+                            # Solo enviar comando de parada si había movimiento antes
+                            if self.last_movement_state and not self.stop_command_sent:
+                                self.send_stopj()
+                                self.stop_command_sent = True
+                    
+                    # Actualizar estado de movimiento
+                    self.last_movement_state = has_movement
                 
                 time.sleep(0.03)  # ~33 Hz
                 
@@ -256,10 +389,25 @@ class XboxUR5eVelocityController:
             else:
                 self.activate_emergency_stop()
         
-        elif button_id == 3:  # Botón X - Detener todo movimiento
+        elif button_id == 3:  # Botón X - Ir a posición Home
+            if not self.emergency_stop_active:
+                print("🏠 Yendo a posición Home...")
+                self.go_home()
+        
+        elif button_id == 4:  # Botón Y - Detener todo movimiento
             if not self.emergency_stop_active:
                 self.stop_all_movement()
                 print("🛑 Todos los movimientos detenidos")
+        
+        elif button_id == 5:  # Botón RT (prueba) - Test simple movement
+            if not self.emergency_stop_active:
+                print("🧪 Probando movimiento simple...")
+                self.test_simple_movement()
+        
+        elif button_id == 2:  # Botón RT alternativo - Home alternativo
+            if not self.emergency_stop_active:
+                print("🏠 [ALT] Probando home alternativo...")
+                self.go_home_alternative()
         
         elif button_id == 6:  # LB - Reducir velocidad
             if not self.emergency_stop_active and self.current_speed_level > 0:
@@ -286,15 +434,7 @@ class XboxUR5eVelocityController:
         right_x = self.apply_deadzone(self.joystick.get_axis(2))
         right_y = self.apply_deadzone(-self.joystick.get_axis(3))  # Invertir Y
         
-        # Obtener triggers (intercambiados según el mapeo del usuario)
-        raw_lt = (self.joystick.get_axis(4) + 1) / 2 if self.joystick.get_numaxes() > 4 else 0
-        raw_rt = (self.joystick.get_axis(5) + 1) / 2 if self.joystick.get_numaxes() > 5 else 0
-        
-        # Intercambiar triggers
-        left_trigger = self.apply_deadzone(raw_rt, self.trigger_deadzone)
-        right_trigger = self.apply_deadzone(raw_lt, self.trigger_deadzone)
-        
-        # Obtener D-pad
+        # Obtener D-pad (ahora usado en lugar de triggers)
         dpad = self.joystick.get_hat(0) if self.joystick.get_numhats() > 0 else (0, 0)
         
         # Aplicar curva de respuesta suave
@@ -304,16 +444,16 @@ class XboxUR5eVelocityController:
         # Calcular velocidades según el modo
         if self.control_mode == "linear":
             velocities = self.calculate_linear_velocities(
-                left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad, smooth_response
+                left_x, left_y, right_x, right_y, dpad, smooth_response
             )
             self.update_velocities(velocities, "linear")
         else:
             velocities = self.calculate_joint_velocities(
-                left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad, smooth_response
+                left_x, left_y, right_x, right_y, dpad, smooth_response
             )
             self.update_velocities(velocities, "joint")
     
-    def calculate_linear_velocities(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad, smooth_func):
+    def calculate_linear_velocities(self, left_x, left_y, right_x, right_y, dpad, smooth_func):
         """Calcular velocidades lineales del TCP"""
         speed_factor = self.speed_levels[self.current_speed_level]
         
@@ -325,19 +465,15 @@ class XboxUR5eVelocityController:
         # Velocidades rotacionales
         wx = smooth_func(right_x) * self.max_linear_velocity['rot'] * speed_factor * 0.3
         
-        # Triggers controlan rotación Y
-        wy = 0.0
-        if left_trigger > 0:
-            wy -= left_trigger * self.max_linear_velocity['rot'] * speed_factor * 0.3
-        if right_trigger > 0:
-            wy += right_trigger * self.max_linear_velocity['rot'] * speed_factor * 0.3
+        # D-pad controla rotación Y (arriba/abajo del D-pad)
+        wy = dpad[1] * self.max_linear_velocity['rot'] * speed_factor * 0.3
         
-        # D-pad controla rotación Z
+        # D-pad controla rotación Z (izquierda/derecha del D-pad)
         wz = dpad[0] * self.max_linear_velocity['rot'] * speed_factor * 0.3
         
         return [vx, vy, vz, wx, wy, wz]
     
-    def calculate_joint_velocities(self, left_x, left_y, right_x, right_y, left_trigger, right_trigger, dpad, smooth_func):
+    def calculate_joint_velocities(self, left_x, left_y, right_x, right_y, dpad, smooth_func):
         """Calcular velocidades articulares"""
         speed_factor = self.speed_levels[self.current_speed_level]
         velocities = [0.0] * 6
@@ -350,13 +486,10 @@ class XboxUR5eVelocityController:
         velocities[2] = smooth_func(right_y) * self.max_joint_velocity[2] * speed_factor
         velocities[3] = smooth_func(right_x) * self.max_joint_velocity[3] * speed_factor
         
-        # Triggers controlan joint 4
-        if left_trigger > 0:
-            velocities[4] -= left_trigger * self.max_joint_velocity[4] * speed_factor
-        if right_trigger > 0:
-            velocities[4] += right_trigger * self.max_joint_velocity[4] * speed_factor
+        # D-pad controla joint 4 (arriba/abajo del D-pad)
+        velocities[4] = dpad[1] * self.max_joint_velocity[4] * speed_factor
         
-        # D-pad controla joint 5
+        # D-pad controla joint 5 (izquierda/derecha del D-pad)
         velocities[5] = dpad[0] * self.max_joint_velocity[5] * speed_factor
         
         return velocities
@@ -368,9 +501,16 @@ class XboxUR5eVelocityController:
             self.current_velocities['linear'] = [0.0] * 6
             self.current_velocities['joint'] = [0.0] * 6
         
-        # Enviar comandos de parada
+        # Resetear flags para permitir nuevos comandos de parada cuando sea necesario
+        self.last_movement_state = False
+        self.stop_command_sent = False
+        
+        # Enviar comandos de parada una sola vez
         self.send_stopl()
         self.send_stopj()
+        
+        # Marcar que ya se enviaron comandos de parada
+        self.stop_command_sent = True
     
     def activate_emergency_stop(self):
         """Activar parada de emergencia"""
@@ -428,7 +568,8 @@ class XboxUR5eVelocityController:
         print(f"\n🎮 CONTROLES:")
         print(f"  🅰️ A: Cambiar modo (linear/joint)")
         print(f"  🅱️ B: Parada de emergencia / Desactivar")
-        print(f"  ❌ X: Detener todos los movimientos")
+        print(f"  ❌ X: Ir a posición Home")
+        print(f"  🟡 Y: Detener todos los movimientos")
         print(f"  🔽 LB: Reducir velocidad")
         print(f"  🔼 RB: Aumentar velocidad")
         print(f"  📋 Menu: Toggle debug mode")
@@ -439,14 +580,12 @@ class XboxUR5eVelocityController:
             print(f"  🕹️ Stick izq: Velocidad X e Y")
             print(f"  🕹️ Stick der Y: Velocidad Z")
             print(f"  🕹️ Stick der X: Velocidad rotacional RX")
-            print(f"  🎯 Triggers: Velocidad rotacional RY")
-            print(f"  ➡️ D-pad: Velocidad rotacional RZ")
+            print(f"  🎯 D-pad: Velocidad rotacional RY (↑↓) y RZ (←→)")
         else:
             print(f"\n🔗 MODO ARTICULAR (velocidad continua):")
             print(f"  🕹️ Stick izq: Velocidad Joints 0 y 1")
             print(f"  🕹️ Stick der: Velocidad Joints 2 y 3")
-            print(f"  🎯 Triggers: Velocidad Joint 4")
-            print(f"  ➡️ D-pad: Velocidad Joint 5")
+            print(f"  🎯 D-pad: Velocidad Joint 4 (↑↓) y Joint 5 (←→)")
         
         print("="*60 + "\n")
     
@@ -463,11 +602,12 @@ class XboxUR5eVelocityController:
         print("⚡ Control de velocidad continua habilitado")
         print("🎮 Controles básicos:")
         print("  ▶️ Start: Ver todos los controles y estado")
-        print("  ❌ X: Detener todos los movimientos")
+        print("  ❌ X: Ir a posición Home")
+        print("  🟡 Y: Detener todos los movimientos")
         print("  🅱️ B: Parada de emergencia")
         print("  🅰️ A: Cambiar entre modo lineal/articular")
         print("  🔽🔼 LB/RB: Cambiar velocidad")
-        print("\n⚠️ IMPORTANTE: Los triggers LT y RT están intercambiados")
+        print("\n⚠️ IMPORTANTE: Los triggers ya no se usan, ahora usa D-pad")
         print("⌨️ Presiona Ctrl+C para salir")
         print("="*60)
         
